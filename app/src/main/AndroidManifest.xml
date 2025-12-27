@@ -1,0 +1,30 @@
+<!--
+  AndroidManifest.xml
+  - Hilt Application 클래스 등록
+  - 런처 Activity exported=true (Android 12+ 필수)
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- android:dataExtractionRules :: Android 12+ 데이터 추출 규칙 -->
+    <!-- android:fullBackupContent :: Android 11 이하(또는 full backup 경로) 백업 규칙 -->
+    <!-- android:allowBackup :: 필요 시 백업 자체를 끄고 싶다면 true로 두지 말고 명시적으로 false로 -->
+    <application
+        android:name=".LifeLogApplication"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.LifeLog"
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules">
+
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+</manifest>

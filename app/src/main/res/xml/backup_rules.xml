@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!--
+      [설명]
+      - Android 자동 백업(클라우드/기기 간 복원)에 포함/제외할 경로를 정의합니다.
+      - 라이프로그는 민감 정보 가능성이 높으므로, 기본값으로 DB/사진을 제외하는 구성이 안전합니다.
+      - 추후 "앱 내 수동 백업(내보내기)" 기능으로 대체하는 것을 권장합니다.
+    -->
+
+    <!-- Room DB 파일(기본 경로: databases/) 제외 -->
+    <exclude domain="database" path="." />
+
+    <!-- 내부 파일 영역(files/) 제외: 사진/첨부파일이 들어갈 가능성이 높음 -->
+    <exclude domain="file" path="." />
+
+    <!-- SharedPreferences(설정값)만 남기고 싶다면 아래처럼 include로 전환 가능
+         다만 exclude가 있으면 include로 명확히 필요한 것만 허용하는 전략을 추천 -->
+    <!-- <include domain="sharedpref" path="." /> -->
+</full-backup-content>
