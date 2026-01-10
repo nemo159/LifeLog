@@ -2,9 +2,13 @@ package com.rmtm.lifelog.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.rmtm.lifelog.feature.detail.DetailScreen
+import com.rmtm.lifelog.feature.detail.DetailViewModel
 import com.rmtm.lifelog.feature.editor.EditorScreen
 import com.rmtm.lifelog.feature.editor.EditorViewModel
 import com.rmtm.lifelog.feature.timeline.TimelineScreen
@@ -13,8 +17,6 @@ import com.rmtm.lifelog.feature.timeline.TimelineViewModel
 /**
  * [LifeLogNavHost]
  * - 앱 내 내비게이션 그래프입니다.
- * - MVP 단계에서는 "타임라인(목록)"과 "에디터(작성)"만 구성합니다.
- * - 상세 화면(Detail)은 다음 단계에 추가해도 됩니다.
  */
 @Composable
 fun LifeLogNavHost() {
@@ -28,7 +30,11 @@ fun LifeLogNavHost() {
             val vm: TimelineViewModel = hiltViewModel()
             TimelineScreen(
                 state = vm.state,
-                onAdd = { navController.navigate(Routes.EDITOR) }
+                onAdd = { navController.navigate(Routes.EDITOR) },
+                onEntryClick = { entry ->
+                    navController.navigate(Routes.detail(entry.id))
+                },
+                onToggleSort = vm::toggleSortOrder
             )
         }
 
@@ -36,8 +42,23 @@ fun LifeLogNavHost() {
             val vm: EditorViewModel = hiltViewModel()
             EditorScreen(
                 state = vm.state,
-                onSave = { vm.save(it) { navController.popBackStack() } },
+                onMoodChanged = vm::onMoodChanged,
+                onNoteChanged = vm::onNoteChanged,
+                onPhotosSelected = vm::onPhotosSelected,
+                onSave = { vm.save { navController.popBackStack() } },
                 onCancel = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.DETAIL,
+            arguments = listOf(navArgument("entryId") { type = NavType.LongType })
+        ) {
+            val vm: DetailViewModel = hiltViewModel()
+            DetailScreen(
+                state = vm.state,
+                onBack = { navController.popBackStack() },
+                onDelete = { vm.delete { navController.popBackStack() } }
             )
         }
     }

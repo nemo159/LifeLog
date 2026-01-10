@@ -13,47 +13,58 @@ import com.rmtm.lifelog.core.model.Entry
 import com.rmtm.lifelog.util.toLocalDateString
 import kotlinx.coroutines.flow.StateFlow
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextOverflow
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimelineScreen(
     state: StateFlow<TimelineState>,
-    onAdd: () -> Unit
+    onAdd: () -> Unit,
+    onEntryClick: (Entry) -> Unit,
+    onToggleSort: () -> Unit
 ) {
     val uiState = state.collectAsStateWithLifecycle()
     val ui = uiState.value
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("일상 데이터 아카이브") })
+            TopAppBar(
+                title = { Text("LifeLog") },
+                actions = {
+                    IconButton(onClick = onToggleSort) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.List,
+                            contentDescription = "정렬",
+                            tint = if (ui.sortOrder == SortOrder.ASC) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            )
         },
-        floatingActionButton = @Composable {
+        floatingActionButton = {
             FloatingActionButton(onClick = onAdd) { Text("+") }
         }
     ) { padding ->
         if (ui.loading) {
             Box(
                 Modifier.fillMaxSize().padding(padding),
-                contentAlignment = androidx.compose.ui.Alignment.Center
+                contentAlignment = Alignment.Center
             ) { CircularProgressIndicator() }
         } else {
             if (ui.entries.isEmpty()) {
-                Box(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
+                Box(Modifier.fillMaxSize().padding(padding).padding(24.dp), contentAlignment = Alignment.Center) {
                     Text("아직 기록이 없습니다.\n오른쪽 아래 + 버튼으로 첫 기록을 추가해보세요.")
                 }
             } else {
                 LazyColumn(Modifier.fillMaxSize().padding(padding)) {
-                    // ✅ 해결: 'key'를 지정하여 올바른 items 함수를 사용하도록 유도합니다.
-                    // 이렇게 하면 타입 추론 오류가 해결됩니다.
-                    // 'entry.id' 부분은 Entry 모델의 고유 식별자로 변경해야 합니다.
-                    // 만약 id가 없다면 'entry.dateEpochDay'와 같이 고유성이 높은 값을 사용하세요.
                     items(
                         items = ui.entries,
-                        key = { entry ->
-                            println("TimelineScreen: key: $entry")
-                            entry.id /* 또는 entry.id */ }
-                            //entry.dateEpochDay /* 또는 entry.id */ }
+                        key = { entry -> entry.id }
                     ) { entry ->
-                        EntryCard(entry)
+                        EntryCard(entry, onClick = { onEntryClick(entry) })
                     }
                 }
             }
@@ -62,19 +73,29 @@ fun TimelineScreen(
 }
 
 @Composable
-private fun EntryCard(entry: Entry) {
+private fun EntryCard(entry: Entry, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .fillMaxWidth()
-            .clickable(enabled = false) { }
+            .clickable(onClick = onClick)
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text(entry.dateEpochDay.toLocalDateString(), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(6.dp))
-            Text("기분: ${entry.mood} / 5")
-            Spacer(Modifier.height(6.dp))
-            Text(entry.note.take(120))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(entry.dateEpochDay.toLocalDateString(), style = MaterialTheme.typography.titleMedium)
+                Text("기분: ${entry.mood}", style = MaterialTheme.typography.bodySmall)
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = entry.note,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

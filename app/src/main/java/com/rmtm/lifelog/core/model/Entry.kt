@@ -17,6 +17,7 @@ data class Entry(
     val dateEpochDay: Long,
     val mood: Int,
     val note: String,
+    val photos: List<Photo> = emptyList(),
     val createdAt: Long,
     val updatedAt: Long,
     val aiSummary: String? = null,

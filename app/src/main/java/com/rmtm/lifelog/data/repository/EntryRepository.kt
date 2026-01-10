@@ -11,5 +11,7 @@ import kotlinx.coroutines.flow.Flow
  */
 interface EntryRepository {
     fun observeEntries(): Flow<List<Entry>>
+    fun observeEntry(id: Long): Flow<Entry?>
     suspend fun upsert(entry: Entry, photos: List<Photo>): Long
+    suspend fun delete(entry: Entry)
 }
