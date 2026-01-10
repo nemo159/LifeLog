@@ -4,9 +4,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /**
- * 날짜 표시 유틸
- * - DB에는 epochDay(Long)로 저장하지만,
- *   UI에서는 사람이 읽기 쉬운 문자열로 변환해야 하므로 확장 함수를 제공합니다.
+ * [날짜 변환 도구]
+ * 숫자로 저장된 날짜를 "2024-01-01" 같은 글자로 바꿔주는 도구입니다.
+ * - 화면에 날짜를 보여줄 때 사용합니다.
  */
 private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 

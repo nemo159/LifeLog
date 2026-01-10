@@ -1,9 +1,9 @@
 package com.rmtm.lifelog.navigation
 
 /**
- * [Routes]
- * - 화면 이동 경로(Route) 상수를 한 곳에서 관리합니다.
- * - 문자열 하드코딩을 줄여 유지보수성을 높입니다.
+ * [화면 주소록]
+ * 앱의 각 화면을 구분하는 '이름'들을 모아둔 파일입니다.
+ * - "timeline", "editor" 처럼 각 화면의 고유한 주소를 상수로 관리합니다.
  */
 object Routes {
     const val TIMELINE = "timeline" // 기록 목록 화면

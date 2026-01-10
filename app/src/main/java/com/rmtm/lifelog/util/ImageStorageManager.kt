@@ -12,9 +12,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * [ImageStorageManager]
- * - 갤러리의 사진(Content URI)을 앱 내부 저장소로 복사합니다.
- * - 원본 사진이 삭제되어도 앱 내에서는 유지되도록 하기 위함입니다.
+ * [이미지 관리자]
+ * 사진을 스마트폰 내부 저장소에 복사하거나 지우는 역할을 합니다.
+ * - 갤러리 원본 사진이 지워져도 앱에는 사진이 남도록, 파일을 앱 전용 폴더로 가져옵니다.
  */
 @Singleton
 class ImageStorageManager @Inject constructor(

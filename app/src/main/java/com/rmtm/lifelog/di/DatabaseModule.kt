@@ -11,8 +11,9 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 /**
- * [DatabaseModule]
- * - Room DB와 DAO를 Hilt로 주입받을 수 있게 제공합니다.
+ * [DI 모듈: 데이터베이스]
+ * 이 파일은 데이터베이스(DB) 생성 방법을 앱 전체에 알려주는 설정 파일입니다.
+ * - 어디서든 `AppDatabase`나 `Dao`가 필요하면 이 설정대로 만들어줍니다.
  */
 @Module
 @InstallIn(SingletonComponent::class)

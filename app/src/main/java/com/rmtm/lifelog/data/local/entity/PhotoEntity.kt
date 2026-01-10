@@ -5,9 +5,10 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * [PhotoEntity]
- * - Entry(기록)와 1:N 관계로 저장되는 사진 테이블 모델입니다.
- * - entryId로 조회가 빈번하므로 인덱스를 둡니다.
+ * [데이터베이스 모델: 사진 테이블]
+ * 이 파일은 스마트폰 내부 저장소(Room DB)에 저장되는 '사진' 정보를 정의합니다.
+ * - 'photos'라는 이름의 테이블로 저장됩니다.
+ * - 어떤 일기(entryId)에 포함된 사진인지 연결 정보를 가지고 있습니다.
  */
 @Entity(
     tableName = "photos",

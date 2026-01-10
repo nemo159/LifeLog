@@ -8,9 +8,9 @@ import com.rmtm.lifelog.data.local.entity.EntryEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
- * [EntryDao]
- * - 기록(Entry) CRUD를 담당합니다.
- * - observeAll(): 목록 화면에서 실시간 반영(Flow)을 위해 사용합니다.
+ * [데이터 접근 객체(DAO): 일기]
+ * 이 파일은 데이터베이스에서 일기 데이터를 넣고, 빼고, 지우는 명령어를 정의합니다.
+ * - 'SQL'이라는 언어 대신 함수 이름으로 데이터를 조작할 수 있게 해줍니다.
  */
 @Dao
 interface EntryDao {

@@ -9,9 +9,9 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 /**
- * [RepositoryModule]
- * - Repository 인터페이스와 실제 구현체를 바인딩합니다.
- * - 테스트 시 FakeRepository로 교체하기 쉬운 구조입니다.
+ * [DI 모듈: 저장소 연결]
+ * 이 파일은 `EntryRepository`를 요청했을 때 실제로 어떤 구현체(`DefaultEntryRepository`)를 줄지 연결해줍니다.
+ * - 인터페이스와 구현을 연결하는 고리 역할을 합니다.
  */
 @Module
 @InstallIn(SingletonComponent::class)

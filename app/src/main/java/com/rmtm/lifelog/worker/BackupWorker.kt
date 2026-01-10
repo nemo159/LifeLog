@@ -8,12 +8,9 @@ import dagger.assisted.AssistedInject
 import androidx.hilt.work.HiltWorker
 
 /**
- * [BackupWorker]
- * - 자동 백업/정리 같은 백그라운드 작업은
- *   targetSdk 36 환경에서도 WorkManager가 가장 안전한 기본값입니다.
- *
- * - MVP 단계에서는 “스텁(빈 구현)”으로 두고,
- *   추후 DB 파일 + 사진 폴더를 ZIP으로 묶어 내부 저장소에 저장하는 방식으로 확장하면 됩니다.
+ * [백그라운드 작업: 백업]
+ * 앱이 꺼져있을 때도 뒤에서 몰래 할 일을 정의합니다.
+ * - 나중에 '데이터 백업' 기능을 만들기 위해 준비해둔 파일입니다.
  */
 @HiltWorker
 class BackupWorker @AssistedInject constructor(

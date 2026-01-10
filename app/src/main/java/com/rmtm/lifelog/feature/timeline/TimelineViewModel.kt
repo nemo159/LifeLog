@@ -26,8 +26,10 @@ data class TimelineState(
 )
 
 /**
- * [TimelineViewModel]
- * - 기록 목록을 관찰(Flow)하고, UI에 상태로 제공합니다.
+ * [뷰모델: 타임라인]
+ * 타임라인 화면의 데이터와 상태를 관리합니다.
+ * - 저장소에서 일기 목록을 가져와서 화면에 전달합니다.
+ * - 최신순/과거순 정렬 기능을 처리합니다.
  */
 @HiltViewModel
 class TimelineViewModel @Inject constructor(

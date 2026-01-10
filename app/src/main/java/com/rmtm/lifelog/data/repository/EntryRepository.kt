@@ -5,9 +5,10 @@ import com.rmtm.lifelog.core.model.Photo
 import kotlinx.coroutines.flow.Flow
 
 /**
- * [EntryRepository]
- * - UI(ViewModel)에서 DB/파일/네트워크 등의 세부 구현을 모르도록 추상화합니다.
- * - 향후 AI 분석 결과 저장, 백업, 검색/필터 확장 시에도 Repository 레벨에서 통합하기 쉽습니다.
+ * [저장소 인터페이스]
+ * 이 파일은 데이터(일기)를 다루는 기능들의 목록(설계도)입니다.
+ * - "일기 목록을 줘", "저장해", "삭제해" 같은 기능들이 정의되어 있습니다.
+ * - 실제 구현은 'DefaultEntryRepository'에서 합니다.
  */
 interface EntryRepository {
     fun observeEntries(): Flow<List<Entry>>

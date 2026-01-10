@@ -15,8 +15,9 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 /**
- * [DefaultEntryRepository]
- * - Room DAO를 이용해 실제 데이터 처리를 수행합니다.
+ * [저장소 구현체]
+ * 이 파일은 `EntryRepository`에 정의된 기능들을 실제로 수행하는 곳입니다.
+ * - 데이터베이스(DAO)와 이미지 관리자 등을 사용해 실제로 데이터를 저장하고 불러옵니다.
  */
 class DefaultEntryRepository @Inject constructor(
     private val entryDao: EntryDao,

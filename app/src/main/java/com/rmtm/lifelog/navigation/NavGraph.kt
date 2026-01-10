@@ -15,8 +15,9 @@ import com.rmtm.lifelog.feature.timeline.TimelineScreen
 import com.rmtm.lifelog.feature.timeline.TimelineViewModel
 
 /**
- * [LifeLogNavHost]
- * - 앱 내 내비게이션 그래프입니다.
+ * [네비게이션 그래프]
+ * 화면 간의 이동 경로를 지도처럼 정의해둔 파일입니다.
+ * - '타임라인 -> 작성화면', '타임라인 -> 상세화면' 등의 이동 규칙을 연결합니다.
  */
 @Composable
 fun LifeLogNavHost() {

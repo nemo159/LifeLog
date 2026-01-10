@@ -18,6 +18,12 @@ import coil.compose.AsyncImage
 import com.rmtm.lifelog.util.toLocalDateString
 import kotlinx.coroutines.flow.StateFlow
 
+/**
+ * [상세 보기 화면]
+ * 목록에서 항목을 클릭했을 때 보여주는 화면입니다.
+ * - 일기의 모든 내용(날짜, 기분, 글, 사진)을 크게 보여줍니다.
+ * - 삭제 버튼을 통해 기록을 지울 수 있습니다.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(

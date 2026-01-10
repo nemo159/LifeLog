@@ -13,11 +13,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class DetailState(
-    val entry: Entry? = null,
-    val loading: Boolean = true
-)
-
+/**
+ * [뷰모델: 상세 보기]
+ * 특정 일기의 상세 정보를 관리합니다.
+ * - 화면이 열릴 때 전달받은 ID로 DB에서 데이터를 찾아옵니다.
+ * - 삭제 기능을 수행합니다.
+ */
 @HiltViewModel
 class DetailViewModel @Inject constructor(
     private val repo: EntryRepository,

@@ -1,16 +1,10 @@
 package com.rmtm.lifelog.core.model
 
 /**
- * [Entry]
- * - 앱의 “기록 1건”을 표현하는 도메인 모델입니다.
- * - UI와 비즈니스 로직에서는 이 모델을 사용하고,
- *   DB 저장용 Entity와는 Mapper로 변환하도록 분리합니다.
- *
- * @param dateEpochDay 날짜를 LocalDate.toEpochDay() 형태로 저장 (시간대 이슈 최소화)
- * @param mood 기분 점수(1~5). MVP에서는 단순 정수로 사용
- * @param note 메모(일기/회고) 본문
- * @param aiSummary AI 요약 결과(옵션). 추후 룰 기반/온디바이스 모델 적용 시 저장
- * @param moodScore 감정 점수(옵션). 텍스트 분석 결과를 저장할 수 있는 확장 슬롯
+ * [도메인 모델: 일기]
+ * 이 파일은 앱에서 다루는 가장 핵심적인 데이터인 '일기(Entry)'를 정의합니다.
+ * - 날짜, 기분, 메모 내용, 사진 목록 등의 정보를 담고 있습니다.
+ * - 데이터베이스나 화면에서 이 형태의 데이터를 주고받습니다.
  */
 data class Entry(
     val id: Long = 0L,

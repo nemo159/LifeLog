@@ -11,6 +11,12 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
+/**
+ * [디자인: 테마]
+ * 앱의 전체적인 분위기(라이트 모드/다크 모드)를 설정합니다.
+ * - 정의된 색상(`Color.kt`)과 글꼴(`Type.kt`)을 조합하여 앱 전체에 적용합니다.
+ */
+
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
     secondary = PurpleGrey80,

@@ -7,10 +7,10 @@ import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
 /**
- * [LifeLogApplication]
- * - 앱 전역 Application 클래스입니다.
- * - Hilt(의존성 주입)를 사용하려면 @HiltAndroidApp 선언이 반드시 필요합니다.
- * - AndroidManifest.xml의 application android:name 에 등록되어 있어야 합니다.
+ * [앱의 시작점: 애플리케이션 클래스]
+ * 이 클래스는 앱이 실행될 때 가장 먼저 생성되는 객체입니다.
+ * - 전역 상태를 관리하고, Hilt 라이브러리를 통해 '의존성 주입' 기능을 활성화합니다.
+ * - 백그라운드 작업(WorkManager)을 위한 설정도 여기서 처리합니다.
  */
 @HiltAndroidApp
 class LifeLogApplication : Application(), Configuration.Provider {

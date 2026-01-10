@@ -28,9 +28,9 @@ data class EditorState(
 )
 
 /**
- * [EditorViewModel]
- * - 사용자 입력을 받아 Entry를 생성하고 DB에 저장합니다.
- * - 저장 완료 시 콜백(onDone)으로 화면을 닫는 흐름을 구성합니다.
+ * [뷰모델: 작성/편집]
+ * 작성 화면의 입력 데이터(날짜, 기분, 내용, 사진)를 관리합니다.
+ * - 사용자가 '저장'을 누르면 데이터를 DB에 저장하고 파일을 관리합니다.
  */
 @HiltViewModel
 class EditorViewModel @Inject constructor(

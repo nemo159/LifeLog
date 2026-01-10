@@ -1,6 +1,7 @@
 /**
- * build.gradle.kts (root)
- * - 버전 관리를 libs.versions.toml 파일로 중앙화합니다.
+ * [프로젝트 루트 빌드 설정]
+ * 이 파일은 프로젝트 전체의 공통 빌드 설정을 담당합니다.
+ * 모든 모듈에서 사용할 플러그인 버전을 이곳에서 중앙 관리합니다.
  */
 plugins {
     alias(libs.plugins.android.application) apply false

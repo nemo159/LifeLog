@@ -8,9 +8,9 @@ import com.rmtm.lifelog.data.local.entity.EntryEntity
 import com.rmtm.lifelog.data.local.entity.PhotoEntity
 
 /**
- * [AppDatabase]
- * - Room DB 루트 클래스입니다.
- * - 엔티티(테이블)와 DAO를 등록합니다.
+ * [데이터베이스 설정]
+ * 이 파일은 앱 전체의 데이터베이스를 구성하는 설정 파일입니다.
+ * - 어떤 테이블(일기, 사진)이 있는지, 어떤 DAO를 통해 접근할지 정의합니다.
  */
 @Database(
     entities = [EntryEntity::class, PhotoEntity::class],

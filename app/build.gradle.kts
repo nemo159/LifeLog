@@ -1,19 +1,8 @@
 /**
- * app/build.gradle.kts
- * - compileSdk / targetSdk 를 36으로 설정합니다.
- * - 로컬 앱(서버 없음) 특성에 맞춰 Room(로컬DB), Hilt(DI), WorkManager(백업) 기본 탑재
- *
- * [KAPT -> KSP 전환]
- * - Windows 환경에서 Room 컴파일 타임 검증(DatabaseVerifier)이 sqlite 네이티브 로딩을 시도하며
- *   NativeLibraryNotFoundException 으로 빌드가 깨지는 케이스가 있습니다.
- * - KSP로 전환해도 Room 검증 로직 자체는 동일하게 동작할 수 있으므로,
- *   "room.disableVerification=true"를 KSP args로 전달해 컴파일 타임 DB 검증을 비활성화합니다.
- *
- * [중요]
- * - 이 옵션은 "컴파일 타임 SQL/스키마 정적 검증"만 끄는 것입니다.
- * - 앱 런타임에서 Room/SQLite 사용은 정상이며, DB 동작에는 영향이 없습니다.
- * - 대신 빌드 시점에 SQL 오타/컬럼 미스매치 등을 잡아주던 기능이 꺼지므로,
- *   개발 중에는 테스트(DAO 쿼리 실행 테스트)로 보강하는 것을 권장합니다.
+ * [앱 모듈 빌드 설정]
+ * 이 파일은 실제 앱(App Module)의 빌드 상세 내용을 담당합니다.
+ * - 사용할 라이브러리(Room, Hilt, Compose 등)를 정의합니다.
+ * - 안드로이드 버전(SDK) 정보를 설정합니다.
  */
 plugins {
     id("com.android.application")

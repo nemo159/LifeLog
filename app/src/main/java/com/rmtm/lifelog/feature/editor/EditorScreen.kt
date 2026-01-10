@@ -15,6 +15,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.StateFlow
 
+/**
+ * [작성/편집 화면]
+ * 일기를 새로 쓰거나 수정하는 화면입니다.
+ * - 기분(1~5점), 내용, 사진을 입력받습니다.
+ * - 사진 선택기를 통해 갤러리에서 사진을 가져옵니다.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditorScreen(

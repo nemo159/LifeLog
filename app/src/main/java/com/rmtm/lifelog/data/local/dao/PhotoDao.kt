@@ -7,8 +7,9 @@ import androidx.room.Query
 import com.rmtm.lifelog.data.local.entity.PhotoEntity
 
 /**
- * [PhotoDao]
- * - 사진은 Entry에 종속되는 데이터이므로, entryId 기반 조회/삭제가 핵심입니다.
+ * [데이터 접근 객체(DAO): 사진]
+ * 이 파일은 데이터베이스에서 사진 데이터를 조작하는 명령어를 정의합니다.
+ * - 특정 일기에 포함된 사진들을 불러오거나 저장/삭제합니다.
  */
 @Dao
 interface PhotoDao {

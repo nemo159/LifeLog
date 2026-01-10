@@ -7,10 +7,10 @@ import com.rmtm.lifelog.navigation.LifeLogNavHost
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
- * [MainActivity]
- * - 앱의 진입점(런처 Activity) 입니다.
- * - Compose 기반 UI 루트를 구성합니다.
- * - Hilt를 사용하므로 @AndroidEntryPoint가 필요합니다.
+ * [메인 화면: 메인 액티비티]
+ * 이 파일은 앱의 유일한 화면(Activity)입니다.
+ * - 여기서 네비게이션(화면 이동) 설정을 불러오고 앱을 시작합니다.
+ * - Compose를 사용하여 UI를 그립니다.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {

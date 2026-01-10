@@ -18,6 +18,12 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextOverflow
 
+/**
+ * [타임라인 화면]
+ * 앱을 켰을 때 처음 나오는 목록 화면입니다.
+ * - 저장된 일기들을 날짜순으로 리스트 형태로 보여줍니다.
+ * - '+' 버튼을 누르면 작성 화면으로 이동합니다.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimelineScreen(

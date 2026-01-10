@@ -6,9 +6,9 @@ import com.rmtm.lifelog.data.local.entity.EntryEntity
 import com.rmtm.lifelog.data.local.entity.PhotoEntity
 
 /**
- * Mapper
- * - DB(Entity) <-> 도메인 모델 간 변환을 담당합니다.
- * - UI/비즈니스 로직이 DB 구조에 종속되지 않도록 하는 핵심 레이어입니다.
+ * [데이터 변환기(Mapper)]
+ * 이 파일은 서로 다른 형태의 데이터 모델을 변환해주는 역할을 합니다.
+ * - 데이터베이스용 모델(Entity) <-> 앱 내부용 모델(Domain) 사이를 변환합니다.
  */
 
 fun EntryEntity.toDomain(): Entry = Entry(
