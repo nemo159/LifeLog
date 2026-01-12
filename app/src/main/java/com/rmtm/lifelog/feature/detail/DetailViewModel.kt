@@ -14,6 +14,15 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
+ * [DetailState]
+ * - 상세 화면의 UI 상태를 정의합니다.
+ */
+data class DetailState(
+    val entry: Entry? = null,
+    val loading: Boolean = true
+)
+
+/**
  * [뷰모델: 상세 보기]
  * 특정 일기의 상세 정보를 관리합니다.
  * - 화면이 열릴 때 전달받은 ID로 DB에서 데이터를 찾아옵니다.
