@@ -18,6 +18,8 @@ import coil.compose.AsyncImage
 import com.rmtm.lifelog.util.toLocalDateString
 import kotlinx.coroutines.flow.StateFlow
 
+import com.rmtm.lifelog.core.model.Mood
+
 /**
  * [상세 보기 화면]
  * 목록에서 항목을 클릭했을 때 보여주는 화면입니다.
@@ -63,6 +65,7 @@ fun DetailScreen(
             }
         } else {
             val entry = ui.entry
+            val mood = Mood.fromValue(entry.mood)
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -76,7 +79,7 @@ fun DetailScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "기분: ${entry.mood} / 5",
+                    text = "${mood.emoji} ${mood.label}",
                     style = MaterialTheme.typography.titleMedium
                 )
                 Spacer(Modifier.height(16.dp))

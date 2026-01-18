@@ -35,7 +35,8 @@ fun LifeLogNavHost() {
                 onEntryClick = { entry ->
                     navController.navigate(Routes.detail(entry.id))
                 },
-                onToggleSort = vm::toggleSortOrder
+                onSortChange = vm::onSortOrderChanged,
+                onDateSelect = vm::selectDate
             )
         }
 

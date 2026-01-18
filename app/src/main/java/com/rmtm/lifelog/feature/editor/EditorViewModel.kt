@@ -15,13 +15,15 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
 
+import com.rmtm.lifelog.core.model.Mood
+
 /**
  * [EditorState]
  * - 작성 화면에서 입력받는 값들을 상태로 관리합니다.
  */
 data class EditorState(
     val date: LocalDate = LocalDate.now(),
-    val mood: Int = 3,
+    val mood: Mood = Mood.CALM,
     val note: String = "",
     val selectedUris: List<Uri> = emptyList(),
     val saving: Boolean = false
@@ -41,7 +43,7 @@ class EditorViewModel @Inject constructor(
     private val _state = MutableStateFlow(EditorState())
     val state: StateFlow<EditorState> = _state.asStateFlow()
 
-    fun onMoodChanged(mood: Int) {
+    fun onMoodChanged(mood: Mood) {
         _state.value = _state.value.copy(mood = mood)
     }
 
@@ -74,7 +76,7 @@ class EditorViewModel @Inject constructor(
             val now = System.currentTimeMillis()
             val entry = Entry(
                 dateEpochDay = currentState.date.toEpochDay(),
-                mood = currentState.mood.coerceIn(1, 5),
+                mood = currentState.mood.value,
                 note = currentState.note,
                 createdAt = now,
                 updatedAt = now

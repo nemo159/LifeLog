@@ -1,0 +1,3 @@
+키파일명 : lifeLogKey
+Alias : lifeLog
+Password : rmtm1234!@

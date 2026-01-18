@@ -23,7 +23,7 @@ android {
         minSdk = 26
         targetSdk = 36
 
-        versionCode = 1
+        versionCode = 3
         versionName = "1.0.0"
     }
 
@@ -46,6 +46,21 @@ android {
      */
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    buildTypes {
+        debug {
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
     }
 }
 
