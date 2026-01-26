@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 /**
  * [앱 모듈 빌드 설정]
  * 이 파일은 실제 앱(App Module)의 빌드 상세 내용을 담당합니다.
@@ -14,6 +17,11 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+// gradle.properties에서 키스토어 정보 읽기
+val keystorePropertiesFile = rootProject.file("gradle.properties")
+val keystoreProperties = Properties()
+keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+
 android {
     namespace = "com.rmtm.lifelog"
     compileSdk = 36
@@ -25,6 +33,15 @@ android {
 
         versionCode = 4
         versionName = "1.0.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["MYAPP_UPLOAD_KEY_ALIAS"] as String
+            keyPassword = keystoreProperties["MYAPP_UPLOAD_SKEY_PASSWORD"] as String
+            storeFile = rootProject.file(keystoreProperties["MYAPP_UPLOAD_STORE_FILE"] as String)
+            storePassword = keystoreProperties["MYAPP_UPLOAD_STORE_PASSWORD"] as String
+        }
     }
 
     buildFeatures {
@@ -61,6 +78,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }
