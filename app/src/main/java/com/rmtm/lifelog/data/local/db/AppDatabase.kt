@@ -20,4 +20,8 @@ import com.rmtm.lifelog.data.local.entity.PhotoEntity
 abstract class AppDatabase : RoomDatabase() {
     abstract fun entryDao(): EntryDao
     abstract fun photoDao(): PhotoDao
+
+    companion object {
+        const val DATABASE_NAME = "lifelog-db"
+    }
 }

@@ -38,7 +38,7 @@ android {
     signingConfigs {
         create("release") {
             keyAlias = keystoreProperties["MYAPP_UPLOAD_KEY_ALIAS"] as String
-            keyPassword = keystoreProperties["MYAPP_UPLOAD_SKEY_PASSWORD"] as String
+            keyPassword = keystoreProperties["MYAPP_UPLOAD_KEY_PASSWORD"] as String
             storeFile = rootProject.file(keystoreProperties["MYAPP_UPLOAD_STORE_FILE"] as String)
             storePassword = keystoreProperties["MYAPP_UPLOAD_STORE_PASSWORD"] as String
         }
@@ -79,6 +79,13 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/DEPENDENCIES"
         }
     }
 }
@@ -162,12 +169,16 @@ dependencies {
     // Google API (Login, Drive)
     // -----------------------
     implementation("com.google.android.gms:play-services-auth:21.2.0")
-    implementation("com.google.api-client:google-api-client-android:2.4.0") {
+
+    implementation("com.google.api-client:google-api-client-android:2.2.0") {
         exclude(group = "org.apache.httpcomponents")
     }
-    implementation("com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0") {
+    implementation("com.google.apis:google-api-services-drive:v3-rev20240509-2.0.0") {
         exclude(group = "org.apache.httpcomponents")
     }
+    implementation("com.google.http-client:google-http-client-gson:1.42.3")
+    implementation("com.google.http-client:google-http-client-android:1.45.0")
+    implementation("com.google.auth:google-auth-library-oauth2-http:1.19.0")
 
 
     // 테스트 의존성
