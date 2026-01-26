@@ -9,6 +9,7 @@ object Routes {
     const val TIMELINE = "timeline" // 기록 목록 화면
     const val EDITOR = "editor"     // 기록 작성 화면
     const val DETAIL = "detail/{entryId}" // 기록 상세 화면
+    const val SETTINGS = "settings" // 설정 화면
 
     fun detail(entryId: Long) = "detail/$entryId"
 }

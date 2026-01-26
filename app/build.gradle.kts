@@ -23,12 +23,13 @@ android {
         minSdk = 26
         targetSdk = 36
 
-        versionCode = 3
+        versionCode = 4
         versionName = "1.0.0"
     }
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     /**
@@ -133,6 +134,30 @@ dependencies {
 
     // 코루틴(명시적으로 고정 권장) - 이미 어딘가에서 들어올 수 있지만, 지금은 명시가 안전
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
+    // -----------------------
+    // DataStore (테마 설정 등)
+    // -----------------------
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // -----------------------
+    // Google API (Login, Drive)
+    // -----------------------
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("com.google.api-client:google-api-client-android:2.4.0") {
+        exclude(group = "org.apache.httpcomponents")
+    }
+    implementation("com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0") {
+        exclude(group = "org.apache.httpcomponents")
+    }
+
+
+    // 테스트 의존성
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 }
 
 /**

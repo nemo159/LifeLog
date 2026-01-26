@@ -18,6 +18,9 @@ local.properties
 # Misc
 *.iml
 *.ap_
+*.json
+*.aab
+*.zip
 
 # Intermediate files
 app/build/intermediates/

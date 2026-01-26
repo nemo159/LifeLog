@@ -3,7 +3,16 @@ package com.rmtm.lifelog
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rmtm.lifelog.navigation.LifeLogNavHost
+import com.rmtm.lifelog.ui.theme.LifeLogTheme
+import com.rmtm.lifelog.ui.theme.ThemeMode
+import com.rmtm.lifelog.ui.theme.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -15,13 +24,28 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    private val themeViewModel: ThemeViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
         setContent {
-            // MVP 단계에서는 별도 테마 파일 없이 Material3 기본 테마를 사용합니다.
-            // 필요 시 typography/colorScheme 등을 추가로 구성하면 됩니다.
-            LifeLogNavHost()
+            val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
+            val isDarkTheme = shouldUseDarkTheme(themeMode)
+
+            LifeLogTheme(darkTheme = isDarkTheme) {
+                LifeLogNavHost()
+            }
         }
+    }
+}
+
+@Composable
+private fun shouldUseDarkTheme(themeMode: ThemeMode): Boolean {
+    return when (themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
 }

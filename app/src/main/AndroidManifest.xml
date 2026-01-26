@@ -3,7 +3,8 @@
   - Hilt Application 클래스 등록
   - 런처 Activity exported=true (Android 12+ 필수)
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- android:dataExtractionRules :: Android 12+ 데이터 추출 규칙 -->
     <!-- android:fullBackupContent :: Android 11 이하(또는 full backup 경로) 백업 규칙 -->
@@ -27,6 +28,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Hilt/WorkManager 사용 시 기본 Initializer 제거 -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
     </application>
 </manifest>

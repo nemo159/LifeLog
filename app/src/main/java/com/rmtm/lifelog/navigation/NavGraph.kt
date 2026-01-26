@@ -1,6 +1,15 @@
 package com.rmtm.lifelog.navigation
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -11,6 +20,7 @@ import com.rmtm.lifelog.feature.detail.DetailScreen
 import com.rmtm.lifelog.feature.detail.DetailViewModel
 import com.rmtm.lifelog.feature.editor.EditorScreen
 import com.rmtm.lifelog.feature.editor.EditorViewModel
+import com.rmtm.lifelog.feature.settings.SettingsScreen
 import com.rmtm.lifelog.feature.timeline.TimelineScreen
 import com.rmtm.lifelog.feature.timeline.TimelineViewModel
 
@@ -22,12 +32,27 @@ import com.rmtm.lifelog.feature.timeline.TimelineViewModel
 @Composable
 fun LifeLogNavHost() {
     val navController = rememberNavController()
+    var showExitDialog by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current as? android.app.Activity
+
+    if (showExitDialog) {
+        ExitConfirmationDialog(
+            onConfirm = {
+                context?.finish()
+            },
+            onDismiss = { showExitDialog = false }
+        )
+    }
 
     NavHost(
         navController = navController,
         startDestination = Routes.TIMELINE
     ) {
         composable(Routes.TIMELINE) {
+            BackHandler {
+                showExitDialog = true
+            }
+
             val vm: TimelineViewModel = hiltViewModel()
             TimelineScreen(
                 state = vm.state,
@@ -36,7 +61,14 @@ fun LifeLogNavHost() {
                     navController.navigate(Routes.detail(entry.id))
                 },
                 onSortChange = vm::onSortOrderChanged,
-                onDateSelect = vm::selectDate
+                onDateSelect = vm::selectDate,
+                onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+            )
+        }
+
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -64,4 +96,23 @@ fun LifeLogNavHost() {
             )
         }
     }
+}
+
+@Composable
+fun ExitConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("앱 종료") },
+        text = { Text("앱을 종료하시겠습니까?") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("종료")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소")
+            }
+        }
+    )
 }

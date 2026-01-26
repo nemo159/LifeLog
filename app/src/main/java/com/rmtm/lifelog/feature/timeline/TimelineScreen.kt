@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,7 +36,8 @@ fun TimelineScreen(
     onAdd: () -> Unit,
     onEntryClick: (Entry) -> Unit,
     onSortChange: (SortOrder) -> Unit,
-    onDateSelect: (Int?, Int?) -> Unit
+    onDateSelect: (Int?, Int?) -> Unit,
+    onSettingsClick: () -> Unit
 ) {
     val uiState = state.collectAsStateWithLifecycle()
     val ui = uiState.value
@@ -74,6 +76,13 @@ fun TimelineScreen(
                                     )
                                 }
                             }
+                        }
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = "설정",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 )
