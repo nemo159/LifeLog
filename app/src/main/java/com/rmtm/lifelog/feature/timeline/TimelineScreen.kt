@@ -49,6 +49,7 @@ fun TimelineScreen(
         topBar = {
             Column {
                 TopAppBar(
+                    title = {},
                     actions = {
                         Box {
                             IconButton(onClick = { showSortMenu = true }) {
