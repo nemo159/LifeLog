@@ -49,7 +49,6 @@ fun TimelineScreen(
         topBar = {
             Column {
                 TopAppBar(
-                    title = { Text("LifeLog") },
                     actions = {
                         Box {
                             IconButton(onClick = { showSortMenu = true }) {
