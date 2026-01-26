@@ -37,10 +37,10 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["MYAPP_UPLOAD_KEY_ALIAS"] as String
-            keyPassword = keystoreProperties["MYAPP_UPLOAD_KEY_PASSWORD"] as String
             storeFile = rootProject.file(keystoreProperties["MYAPP_UPLOAD_STORE_FILE"] as String)
             storePassword = keystoreProperties["MYAPP_UPLOAD_STORE_PASSWORD"] as String
+            keyAlias = keystoreProperties["MYAPP_UPLOAD_KEY_ALIAS"] as String
+            keyPassword = keystoreProperties["MYAPP_UPLOAD_KEY_PASSWORD"] as String
         }
     }
 
@@ -72,13 +72,13 @@ android {
             isShrinkResources = false
         }
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
         }
     }
 
