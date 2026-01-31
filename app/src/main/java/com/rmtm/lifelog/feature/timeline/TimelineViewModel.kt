@@ -104,9 +104,9 @@ class TimelineViewModel @Inject constructor(
 
         // 4. 정렬
         val sortedList = if (sortOrder == SortOrder.DATE_DESC) {
-            filtered.sortedByDescending { it.dateEpochDay }
+            filtered.sortedByDescending { it.createdAt }
         } else {
-            filtered.sortedBy { it.dateEpochDay }
+            filtered.sortedBy { it.createdAt }
         }
 
         // 5. 그룹화

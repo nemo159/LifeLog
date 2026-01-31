@@ -10,15 +10,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.rmtm.lifelog.util.toLocalDateString
-import kotlinx.coroutines.flow.StateFlow
-
 import com.rmtm.lifelog.core.model.Mood
+import com.rmtm.lifelog.util.toLocalDateTimeString
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * [상세 보기 화면]
@@ -41,7 +41,7 @@ fun DetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("기록 상세") },
+                title = { },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -73,15 +73,20 @@ fun DetailScreen(
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                Text(
-                    text = entry.dateEpochDay.toLocalDateString(),
-                    style = MaterialTheme.typography.headlineSmall
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "${mood.emoji} ${mood.label}",
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = entry.createdAt.toLocalDateTimeString(),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = mood.emoji,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                }
                 Spacer(Modifier.height(16.dp))
                 Text(
                     text = entry.note,
