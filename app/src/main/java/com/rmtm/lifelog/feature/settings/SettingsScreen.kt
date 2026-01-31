@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,13 +14,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -31,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -49,8 +57,13 @@ import coil.compose.AsyncImage
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.Scope
+import com.google.api.services.drive.model.File
 import com.rmtm.lifelog.ui.theme.ThemeMode
 import com.rmtm.lifelog.ui.theme.ThemeViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * [설정 화면]
@@ -86,13 +99,47 @@ fun SettingsScreen(
         }
     }
 
-    // Google 로그인 옵션 (ID와 기본 프로필 요청)
+    // Google 로그인 옵션 (ID와 기본 프로필, Drive 접근 권한 요청)
     val gso = remember {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
+            .requestScopes(Scope("https://www.googleapis.com/auth/drive.file"))
             .build()
     }
     val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
+
+    LaunchedEffect(uiState.backupEvent) {
+        when (val event = uiState.backupEvent) {
+            is BackupEvent.Success -> {
+                Toast.makeText(context, "백업이 완료되었습니다.", Toast.LENGTH_SHORT).show()
+                viewModel.consumeBackupEvent()
+            }
+
+            is BackupEvent.Failure -> {
+                Toast.makeText(context, "백업 실패: ${event.message}", Toast.LENGTH_SHORT).show()
+                viewModel.consumeBackupEvent()
+            }
+
+            null -> Unit
+        }
+    }
+
+    LaunchedEffect(uiState.restoreEvent) {
+        when (val event = uiState.restoreEvent) {
+            is RestoreEvent.Success -> {
+                Toast.makeText(context, "복원이 완료되었습니다. 앱을 재시작하세요.", Toast.LENGTH_LONG).show()
+                viewModel.consumeRestoreEvent()
+            }
+
+            is RestoreEvent.Failure -> {
+                Toast.makeText(context, "복원 실패: ${event.message}", Toast.LENGTH_SHORT).show()
+                viewModel.consumeRestoreEvent()
+            }
+
+            null -> Unit
+        }
+    }
+
 
     if (showThemeDialog) {
         ThemeSelectionDialog(
@@ -104,6 +151,17 @@ fun SettingsScreen(
             }
         )
     }
+
+    uiState.backupFiles?.let { files ->
+        BackupFilesDialog(
+            files = files,
+            onDismiss = { viewModel.clearBackupFiles() },
+            onFileSelected = { fileId ->
+                viewModel.restore(fileId)
+            }
+        )
+    }
+
 
     Scaffold(
         topBar = {
@@ -120,78 +178,158 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
         ) {
-            // 계정 섹션
-            SettingsSection(title = "계정") {
-                if (uiState.signedInUser == null) {
-                    Button(onClick = { signInLauncher.launch(googleSignInClient.signInIntent) }) {
-                        Text("Google 계정으로 로그인")
-                    }
-                } else {
-                    UserInfoCard(
-                        user = uiState.signedInUser!!,
-                        onSignOut = {
-                            googleSignInClient.signOut().addOnCompleteListener {
-                                viewModel.signOut()
-                            }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                // 계정 섹션
+                SettingsSection(title = "계정") {
+                    if (uiState.signedInUser == null) {
+                        Button(
+                            onClick = { signInLauncher.launch(googleSignInClient.signInIntent) },
+                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding
+                        ) {
+                            Icon(
+                                Icons.Default.AccountCircle,
+                                contentDescription = "Google 로그인 아이콘",
+                                modifier = Modifier.size(ButtonDefaults.IconSize)
+                            )
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Google 계정으로 로그인")
                         }
+                    } else {
+                        UserInfoCard(
+                            user = uiState.signedInUser!!,
+                            onSignOut = {
+                                googleSignInClient.signOut().addOnCompleteListener {
+                                    viewModel.signOut()
+                                }
+                            }
+                        )
+                    }
+                }
+
+                if (uiState.signedInUser != null) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+                    // 데이터 섹션
+                    SettingsSection(title = "데이터") {
+                        Button(
+                            onClick = {
+                                val account = GoogleSignIn.getLastSignedInAccount(context)
+                                if (account != null) {
+                                    val driveScope =
+                                        Scope("https://www.googleapis.com/auth/drive.file")
+                                    val hasPermission =
+                                        GoogleSignIn.hasPermissions(account, driveScope)
+                                    if (hasPermission) {
+                                        viewModel.backup()
+                                    } else {
+                                        signInLauncher.launch(googleSignInClient.signInIntent)
+                                    }
+                                }
+                            },
+                            enabled = !uiState.isLoading
+                        ) {
+                            Text("백업")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                val account = GoogleSignIn.getLastSignedInAccount(context)
+                                if (account != null) {
+                                    val driveScope =
+                                        Scope("https://www.googleapis.com/auth/drive.file")
+                                    val hasPermission =
+                                        GoogleSignIn.hasPermissions(account, driveScope)
+                                    if (hasPermission) {
+                                        viewModel.listBackupFiles()
+                                    } else {
+                                        signInLauncher.launch(googleSignInClient.signInIntent)
+                                    }
+                                }
+                            },
+                            enabled = !uiState.isLoading
+                        ) {
+                            Text("복원")
+                        }
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+                // 앱 설정 섹션
+                SettingsSection(title = "앱 설정") {
+                    SettingItem(
+                        title = "테마 설정",
+                        value = when (themeMode) {
+                            ThemeMode.LIGHT -> "라이트"
+                            ThemeMode.DARK -> "다크"
+                            ThemeMode.SYSTEM -> "시스템 설정"
+                        },
+                        onClick = { showThemeDialog = true }
                     )
                 }
-            }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
-            // 데이터 섹션
-            SettingsSection(title = "데이터") {
-                val context = LocalContext.current
-                Button(
-                    onClick = {
-                        Toast.makeText(context, "준비 중인 기능입니다.", Toast.LENGTH_SHORT).show()
-                    },
-                    enabled = uiState.signedInUser != null
-                ) {
-                    Text("백업")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = {
-                        Toast.makeText(context, "준비 중인 기능입니다.", Toast.LENGTH_SHORT).show()
-                    },
-                    enabled = uiState.signedInUser != null
-                ) {
-                    Text("복원")
+                // 정보 섹션
+                SettingsSection(title = "정보") {
+                    Text("앱 버전: ${uiState.appVersionName}")
                 }
             }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-            // 앱 설정 섹션
-            SettingsSection(title = "앱 설정") {
-                SettingItem(
-                    title = "테마 설정",
-                    value = when (themeMode) {
-                        ThemeMode.LIGHT -> "라이트"
-                        ThemeMode.DARK -> "다크"
-                        ThemeMode.SYSTEM -> "시스템 설정"
-                    },
-                    onClick = { showThemeDialog = true }
-                )
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-            // 정보 섹션
-            SettingsSection(title = "정보") {
-                Text("앱 버전: ${uiState.appVersionName}")
+            if (uiState.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
         }
     }
 }
+
+@Composable
+private fun BackupFilesDialog(
+    files: List<File>,
+    onDismiss: () -> Unit,
+    onFileSelected: (String) -> Unit
+) {
+    val format = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("복원할 파일 선택") },
+        text = {
+            if (files.isEmpty()) {
+                Text("백업 파일이 없습니다.")
+            } else {
+                LazyColumn {
+                    items(files.sortedByDescending { it.modifiedTime.value }) { file ->
+                        Row(modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onFileSelected(file.id) }
+                            .padding(vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "수정된 날짜: ${format.format(Date(file.modifiedTime.value))}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소")
+            }
+        }
+    )
+}
+
 
 @Composable
 private fun SettingItem(title: String, value: String, onClick: () -> Unit) {
@@ -306,7 +444,8 @@ private fun UserInfoCard(user: SignedInUser, onSignOut: () -> Unit) {
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    error = rememberVectorPainter(image = Icons.Default.AccountCircle)
                 )
                 Spacer(modifier = Modifier.size(16.dp))
                 Column {
