@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.net.Uri
 import coil.compose.AsyncImage
 import com.rmtm.lifelog.core.model.Mood
 import com.rmtm.lifelog.core.model.Photo
@@ -140,13 +141,12 @@ fun DetailScreen(
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         itemsIndexed(entry.photos) { index, photo ->
                             Card(modifier = Modifier.clickable { selectedPhotoIndex = index }) {
-                                AsyncImage(
-                                    model = photo.uri,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(120.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
+                                                            AsyncImage(
+                                                                model = Uri.parse("file://" + photo.uri),
+                                                                contentDescription = null,
+                                                                modifier = Modifier.size(120.dp),
+                                                                contentScale = ContentScale.Crop
+                                                            )                            }
                         }
                     }
                 }
@@ -229,7 +229,7 @@ private fun PhotoViewerDialog(
                 userScrollEnabled = !isZoomed
             ) { page ->
                 ZoomableImage(
-                    uri = photos[page].uri,
+                    uri = Uri.parse("file://" + photos[page].uri).toString(),
                     modifier = Modifier.fillMaxSize(),
                     onZoomChanged = { isZoomed = it }
                 )
