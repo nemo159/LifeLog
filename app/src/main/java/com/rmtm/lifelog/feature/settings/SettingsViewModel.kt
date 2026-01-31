@@ -210,12 +210,16 @@ class SettingsViewModel @Inject constructor(
                     // 3. DB 닫기 (파일 접근 해제)
                     appDatabase.close()
 
-                    // 4. 기존 데이터 디렉터리 전체 삭제
-                    val dbDir = app.getDatabasePath(AppDatabase.DATABASE_NAME).parentFile
+                    // 4. 기존 데이터 정리 (Safer: DB 파일만 삭제, 폴더는 유지)
+                    val dbFile = app.getDatabasePath(AppDatabase.DATABASE_NAME)
+                    JavaFile(dbFile.path).delete()
+                    JavaFile(dbFile.path + "-wal").delete()
+                    JavaFile(dbFile.path + "-shm").delete()
+
                     val imagesDir = JavaFile(app.filesDir, "images")
-                    dbDir?.deleteRecursively()
-                    imagesDir.deleteRecursively()
-                    dbDir?.mkdirs()
+                    if (imagesDir.exists()) {
+                        imagesDir.deleteRecursively()
+                    }
                     imagesDir.mkdirs()
 
                     // 5. 압축 해제된 모든 파일/폴더를 올바른 위치로 복사
@@ -223,7 +227,7 @@ class SettingsViewModel @Inject constructor(
                     var dbFileFound = false
                     for (unzippedFile in unzippedContents) {
                         if (unzippedFile.name.startsWith(AppDatabase.DATABASE_NAME)) {
-                            unzippedFile.copyTo(JavaFile(dbDir, unzippedFile.name), true)
+                            unzippedFile.copyTo(JavaFile(dbFile.parentFile, unzippedFile.name), true)
                             if(unzippedFile.name == AppDatabase.DATABASE_NAME) dbFileFound = true
                         } else if (unzippedFile.isDirectory && unzippedFile.name == "images") {
                             unzippedFile.copyRecursively(imagesDir, true)

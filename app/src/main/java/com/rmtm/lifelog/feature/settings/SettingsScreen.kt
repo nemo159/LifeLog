@@ -344,9 +344,9 @@ private fun RestoreSuccessDialog(onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = { /* 사용자가 외부를 클릭해도 닫히지 않음 */ },
         title = { Text("복원 완료") },
-        text = { Text("복원이 완료되었습니다. 앱을 종료합니다.") },
+        text = { Text("복원이 완료되었습니다. 확인 버튼을 누른 후 앱을 다시 시작해주세요.") },
         confirmButton = {
-            TextButton(onClick = onConfirm) {
+            TextButton(onClick = { System.exit(0) }) {
                 Text("확인")
             }
         }
@@ -383,7 +383,7 @@ private fun RestoreConfirmationDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("복원 경고") },
-        text = { Text("주의: 백업하지 않은 데이터는 복원 시 삭제됩니다. 계속하시겠습니까?") },
+        text = { Text("백업하지 않은 데이터는 복원 시 삭제됩니다. 계속하시겠습니까?") },
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text("확인")

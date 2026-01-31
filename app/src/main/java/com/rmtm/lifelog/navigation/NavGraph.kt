@@ -1,6 +1,9 @@
 package com.rmtm.lifelog.navigation
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,7 +49,9 @@ fun LifeLogNavHost() {
 
     NavHost(
         navController = navController,
-        startDestination = Routes.TIMELINE
+        startDestination = Routes.TIMELINE,
+        enterTransition = { fadeIn(animationSpec = tween(220, delayMillis = 90)) },
+        exitTransition = { fadeOut(animationSpec = tween(90)) }
     ) {
         composable(Routes.TIMELINE) {
             BackHandler {
