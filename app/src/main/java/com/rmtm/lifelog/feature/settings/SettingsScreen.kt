@@ -1,9 +1,12 @@
 package com.rmtm.lifelog.feature.settings
 
+import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
@@ -84,6 +88,9 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showRestoreSuccessDialog by remember { mutableStateOf(false) }
+    var showRestoreConfirmationDialog by remember { mutableStateOf(false) }
+    var showBackupConfirmationDialog by remember { mutableStateOf(false) }
 
 
     // Google 로그인 Intent를 위한 ActivityResultLauncher
@@ -127,7 +134,7 @@ fun SettingsScreen(
     LaunchedEffect(uiState.restoreEvent) {
         when (val event = uiState.restoreEvent) {
             is RestoreEvent.Success -> {
-                Toast.makeText(context, "복원이 완료되었습니다. 앱을 재시작하세요.", Toast.LENGTH_LONG).show()
+                showRestoreSuccessDialog = true
                 viewModel.consumeRestoreEvent()
             }
 
@@ -152,12 +159,63 @@ fun SettingsScreen(
         )
     }
 
+    if (showRestoreSuccessDialog) {
+        RestoreSuccessDialog(
+            onConfirm = {
+                showRestoreSuccessDialog = false
+                (context as? Activity)?.finishAffinity()
+            }
+        )
+    }
+
+    if (showRestoreConfirmationDialog) {
+        RestoreConfirmationDialog(
+            onConfirm = {
+                showRestoreConfirmationDialog = false
+                val account = GoogleSignIn.getLastSignedInAccount(context)
+                if (account != null) {
+                    val driveScope =
+                        Scope("https://www.googleapis.com/auth/drive.file")
+                    val hasPermission =
+                        GoogleSignIn.hasPermissions(account, driveScope)
+                    if (hasPermission) {
+                        viewModel.listBackupFiles()
+                    } else {
+                        signInLauncher.launch(googleSignInClient.signInIntent)
+                    }
+                }
+            },
+            onDismiss = { showRestoreConfirmationDialog = false }
+        )
+    }
+
+    if (showBackupConfirmationDialog) {
+        BackupConfirmationDialog(
+            onConfirm = {
+                showBackupConfirmationDialog = false
+                val account = GoogleSignIn.getLastSignedInAccount(context)
+                if (account != null) {
+                    val driveScope =
+                        Scope("https://www.googleapis.com/auth/drive.file")
+                    val hasPermission =
+                        GoogleSignIn.hasPermissions(account, driveScope)
+                    if (hasPermission) {
+                        viewModel.backup()
+                    } else {
+                        signInLauncher.launch(googleSignInClient.signInIntent)
+                    }
+                }
+            },
+            onDismiss = { showBackupConfirmationDialog = false }
+        )
+    }
+
     uiState.backupFiles?.let { files ->
         BackupFilesDialog(
             files = files,
             onDismiss = { viewModel.clearBackupFiles() },
-            onFileSelected = { fileId ->
-                viewModel.restore(fileId)
+            onFileSelected = { fileId, fileName ->
+                viewModel.restore(fileId, fileName)
             }
         )
     }
@@ -220,44 +278,22 @@ fun SettingsScreen(
 
                     // 데이터 섹션
                     SettingsSection(title = "데이터") {
-                        Button(
-                            onClick = {
-                                val account = GoogleSignIn.getLastSignedInAccount(context)
-                                if (account != null) {
-                                    val driveScope =
-                                        Scope("https://www.googleapis.com/auth/drive.file")
-                                    val hasPermission =
-                                        GoogleSignIn.hasPermissions(account, driveScope)
-                                    if (hasPermission) {
-                                        viewModel.backup()
-                                    } else {
-                                        signInLauncher.launch(googleSignInClient.signInIntent)
-                                    }
-                                }
-                            },
-                            enabled = !uiState.isLoading
-                        ) {
-                            Text("백업")
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = {
-                                val account = GoogleSignIn.getLastSignedInAccount(context)
-                                if (account != null) {
-                                    val driveScope =
-                                        Scope("https://www.googleapis.com/auth/drive.file")
-                                    val hasPermission =
-                                        GoogleSignIn.hasPermissions(account, driveScope)
-                                    if (hasPermission) {
-                                        viewModel.listBackupFiles()
-                                    } else {
-                                        signInLauncher.launch(googleSignInClient.signInIntent)
-                                    }
-                                }
-                            },
-                            enabled = !uiState.isLoading
-                        ) {
-                            Text("복원")
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            Button(
+                                onClick = { showBackupConfirmationDialog = true },
+                                enabled = !uiState.isLoading,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("백업")
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = { showRestoreConfirmationDialog = true },
+                                enabled = !uiState.isLoading,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("복원")
+                            }
                         }
                     }
                 }
@@ -285,20 +321,88 @@ fun SettingsScreen(
                 }
             }
             if (uiState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
         }
     }
 }
 
 @Composable
+private fun RestoreSuccessDialog(onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = { /* 사용자가 외부를 클릭해도 닫히지 않음 */ },
+        title = { Text("복원 완료") },
+        text = { Text("복원이 완료되었습니다. 앱을 종료합니다.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("확인")
+            }
+        }
+    )
+}
+
+@Composable
+private fun BackupConfirmationDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("백업 확인") },
+        text = { Text("백업하시겠습니까?") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("확인")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소")
+            }
+        }
+    )
+}
+
+@Composable
+private fun RestoreConfirmationDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("복원 경고") },
+        text = { Text("주의: 백업하지 않은 데이터는 복원 시 삭제됩니다. 계속하시겠습니까?") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("확인")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소")
+            }
+        }
+    )
+}
+
+@Composable
 private fun BackupFilesDialog(
     files: List<File>,
     onDismiss: () -> Unit,
-    onFileSelected: (String) -> Unit
+    onFileSelected: (fileId: String, fileName: String) -> Unit
 ) {
-    val format = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("복원할 파일 선택") },
@@ -310,11 +414,11 @@ private fun BackupFilesDialog(
                     items(files.sortedByDescending { it.modifiedTime.value }) { file ->
                         Row(modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onFileSelected(file.id) }
+                            .clickable { onFileSelected(file.id, file.name) }
                             .padding(vertical = 8.dp)
                         ) {
                             Text(
-                                text = "수정된 날짜: ${format.format(Date(file.modifiedTime.value))}",
+                                text = file.name,
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }

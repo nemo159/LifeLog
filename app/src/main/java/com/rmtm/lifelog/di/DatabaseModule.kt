@@ -24,7 +24,7 @@ object DatabaseModule {
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
         // 서버가 없는 로컬 앱이므로, 단일 DB 파일로 충분합니다.
         // 추후 마이그레이션이 필요해지면 migration을 추가하면 됩니다.
-        return Room.databaseBuilder(context, AppDatabase::class.java, "lifelog.db")
+        return Room.databaseBuilder(context, AppDatabase::class.java, AppDatabase.DATABASE_NAME)
             .build()
     }
 

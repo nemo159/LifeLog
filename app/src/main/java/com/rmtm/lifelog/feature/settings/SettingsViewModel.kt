@@ -5,15 +5,24 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.api.services.drive.model.File
 import com.rmtm.lifelog.BuildConfig
+import com.rmtm.lifelog.data.local.db.AppDatabase
 import com.rmtm.lifelog.data.remote.GoogleDriveService
+import com.rmtm.lifelog.util.ZipManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File as JavaFile
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
-import com.google.api.services.drive.model.File
+
 
 /**
  * [설정 화면 뷰모델]
@@ -25,7 +34,8 @@ import com.google.api.services.drive.model.File
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val app: Application,
-    private val googleDriveService: GoogleDriveService
+    private val googleDriveService: GoogleDriveService,
+    private val appDatabase: AppDatabase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -81,35 +91,61 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * 데이터베이스를 구글 드라이브에 백업합니다.
+     * 데이터베이스와 사진을 포함한 전체 데이터를 구글 드라이브에 백업합니다.
      */
     fun backup() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val account = GoogleSignIn.getLastSignedInAccount(app)
             if (account == null) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        backupEvent = BackupEvent.Failure("로그인 정보가 없습니다.")
-                    )
-                }
+                _uiState.update { it.copy(isLoading = false, backupEvent = BackupEvent.Failure("로그인 정보가 없습니다.")) }
                 return@launch
             }
 
-            val result = googleDriveService.uploadDatabase(account)
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    backupEvent = if (result.isSuccess) {
-                        BackupEvent.Success
-                    } else {
-                        BackupEvent.Failure(result.exceptionOrNull()?.message ?: "알 수 없는 오류")
+            try {
+                withContext(Dispatchers.IO) {
+                    val dbPath = app.getDatabasePath(AppDatabase.DATABASE_NAME)
+                    if (!dbPath.exists()) {
+                        throw Exception("백업할 데이터가 없습니다. 먼저 기록을 작성해주세요.")
                     }
-                )
+
+                    // DB 관련 파일(-wal, -shm 포함) 모두 가져오기
+                    val dbDir = dbPath.parentFile
+                    val dbFiles = dbDir?.listFiles { _, name ->
+                        name.startsWith(AppDatabase.DATABASE_NAME)
+                    }?.toList() ?: emptyList()
+
+                    val imagesDir = JavaFile(app.filesDir, "images")
+                    val sourcesToZip = dbFiles + listOfNotNull(if (imagesDir.exists()) imagesDir else null)
+
+                    if (sourcesToZip.isEmpty()) {
+                        throw Exception("백업할 파일이 없습니다.")
+                    }
+
+                    // 임시 zip 파일 생성
+                    val timestamp = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault()).format(Date())
+                    val backupFileName = "lifelog-backup_${timestamp}.zip"
+                    val backupZipFile = JavaFile(app.cacheDir, backupFileName)
+
+                    ZipManager.zip(sourcesToZip, backupZipFile.absolutePath)
+
+                    // 구글 드라이브에 업로드
+                    val result = googleDriveService.uploadBackup(account, backupZipFile)
+
+                    // 임시 파일 삭제
+                    backupZipFile.delete()
+
+                    if (result.isFailure) {
+                        throw result.exceptionOrNull() ?: Exception("알 수 없는 오류")
+                    }
+                }
+                _uiState.update { it.copy(isLoading = false, backupEvent = BackupEvent.Success) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, backupEvent = BackupEvent.Failure(e.message ?: "알 수 없는 오류")) }
             }
         }
     }
+
 
     /**
      * 백업 이벤트를 소비(확인) 처리합니다.
@@ -126,12 +162,7 @@ class SettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             val account = GoogleSignIn.getLastSignedInAccount(app)
             if (account == null) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        restoreEvent = RestoreEvent.Failure("로그인 정보가 없습니다.")
-                    )
-                }
+                _uiState.update { it.copy(isLoading = false, restoreEvent = RestoreEvent.Failure("로그인 정보가 없습니다.")) }
                 return@launch
             }
             val result = googleDriveService.getBackupFiles(account)
@@ -154,32 +185,66 @@ class SettingsViewModel @Inject constructor(
     /**
      * 선택된 파일을 복원합니다.
      */
-    fun restore(fileId: String) {
+    fun restore(fileId: String, backupFileName: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, backupFiles = null) }
             val account = GoogleSignIn.getLastSignedInAccount(app)
             if (account == null) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        restoreEvent = RestoreEvent.Failure("로그인 정보가 없습니다.")
-                    )
-                }
+                _uiState.update { it.copy(isLoading = false, restoreEvent = RestoreEvent.Failure("로그인 정보가 없습니다.")) }
                 return@launch
             }
-            val result = googleDriveService.downloadDatabase(account, fileId)
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    restoreEvent = if (result.isSuccess) {
-                        RestoreEvent.Success
-                    } else {
-                        RestoreEvent.Failure(result.exceptionOrNull()?.message ?: "알 수 없는 오류")
+
+            try {
+                withContext(Dispatchers.IO) {
+                    val tempZipFile = JavaFile(app.cacheDir, backupFileName)
+                    val tempUnzipDir = JavaFile(app.cacheDir, "restore_temp")
+
+                    // 1. 드라이브에서 임시 zip 파일 다운로드
+                    googleDriveService.downloadBackup(account, fileId, tempZipFile).getOrThrow()
+
+                    // 2. 임시 폴더에 압축 해제
+                    if (tempUnzipDir.exists()) tempUnzipDir.deleteRecursively()
+                    tempUnzipDir.mkdirs()
+                    ZipManager.unzip(tempZipFile.absolutePath, tempUnzipDir)
+
+                    // 3. DB 닫기 (파일 접근 해제)
+                    appDatabase.close()
+
+                    // 4. 기존 데이터 디렉터리 전체 삭제
+                    val dbDir = app.getDatabasePath(AppDatabase.DATABASE_NAME).parentFile
+                    val imagesDir = JavaFile(app.filesDir, "images")
+                    dbDir?.deleteRecursively()
+                    imagesDir.deleteRecursively()
+                    dbDir?.mkdirs()
+                    imagesDir.mkdirs()
+
+                    // 5. 압축 해제된 모든 파일/폴더를 올바른 위치로 복사
+                    val unzippedContents = tempUnzipDir.listFiles() ?: emptyArray()
+                    var dbFileFound = false
+                    for (unzippedFile in unzippedContents) {
+                        if (unzippedFile.name.startsWith(AppDatabase.DATABASE_NAME)) {
+                            unzippedFile.copyTo(JavaFile(dbDir, unzippedFile.name), true)
+                            if(unzippedFile.name == AppDatabase.DATABASE_NAME) dbFileFound = true
+                        } else if (unzippedFile.isDirectory && unzippedFile.name == "images") {
+                            unzippedFile.copyRecursively(imagesDir, true)
+                        }
                     }
-                )
+
+                    if (!dbFileFound) {
+                        throw Exception("백업 파일에 데이터베이스 파일이 없습니다.")
+                    }
+
+                    // 6. 임시 파일/폴더 삭제
+                    tempZipFile.delete()
+                    tempUnzipDir.deleteRecursively()
+                }
+                _uiState.update { it.copy(isLoading = false, restoreEvent = RestoreEvent.Success) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, restoreEvent = RestoreEvent.Failure(e.message ?: "알 수 없는 오류")) }
             }
         }
     }
+
 
     /**
      * 복원 이벤트를 소비(확인) 처리합니다.

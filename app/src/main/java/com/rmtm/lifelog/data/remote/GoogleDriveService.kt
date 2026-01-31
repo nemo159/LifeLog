@@ -2,18 +2,16 @@ package com.rmtm.lifelog.data.remote
 
 import android.content.Context
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.http.FileContent
+import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.model.File
 import com.rmtm.lifelog.R
-import com.rmtm.lifelog.data.local.db.AppDatabase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -58,38 +56,21 @@ class GoogleDriveService @Inject constructor(
         createdFolder.id
     }
 
-    suspend fun uploadDatabase(account: GoogleSignInAccount): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun uploadBackup(account: GoogleSignInAccount, backupFile: java.io.File): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val drive = getDriveService(account)
             val appFolderId = getOrCreateAppFolder(drive)
-            val dbFile = context.getDatabasePath(AppDatabase.DATABASE_NAME)
-
-            if (!dbFile.exists()) {
-                return@withContext Result.failure(Exception("데이터베이스 파일을 찾을 수 없습니다."))
-            }
-
-            val existingFiles = drive.files().list()
-                .setQ("'$appFolderId' in parents and name='${AppDatabase.DATABASE_NAME}' and trashed=false")
-                .setSpaces("drive")
-                .setFields("files(id)")
-                .execute()
-
-            val existingFileId = existingFiles.files.firstOrNull()?.id
 
             val fileMetadata = File().apply {
-                name = AppDatabase.DATABASE_NAME
-                parents = if (existingFileId == null) listOf(appFolderId) else null
+                name = backupFile.name
+                parents = listOf(appFolderId)
             }
-            val mediaContent = FileContent("application/x-sqlite3", dbFile)
+            val mediaContent = FileContent("application/zip", backupFile)
 
-            if (existingFileId == null) {
-                drive.files().create(fileMetadata, mediaContent).execute()
-            } else {
-                drive.files().update(existingFileId, fileMetadata, mediaContent).execute()
-            }
+            drive.files().create(fileMetadata, mediaContent).execute()
 
             Result.success(Unit)
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(e)
         }
@@ -106,21 +87,18 @@ class GoogleDriveService @Inject constructor(
                 .setFields("files(id, name, modifiedTime)")
                 .execute()
             Result.success(response.files)
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(e)
         }
     }
 
-    suspend fun downloadDatabase(account: GoogleSignInAccount, fileId: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun downloadBackup(account: GoogleSignInAccount, fileId: String, outputFile: java.io.File): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val drive = getDriveService(account)
-            val dbFile = context.getDatabasePath(AppDatabase.DATABASE_NAME)
-
-            drive.files().get(fileId).executeMediaAndDownloadTo(dbFile.outputStream())
-
+            drive.files().get(fileId).executeMediaAndDownloadTo(outputFile.outputStream())
             Result.success(Unit)
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(e)
         }
