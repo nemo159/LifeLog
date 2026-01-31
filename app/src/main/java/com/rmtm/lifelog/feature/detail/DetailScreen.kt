@@ -3,7 +3,10 @@ package com.rmtm.lifelog.feature.detail
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -15,17 +18,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,6 +44,7 @@ import com.rmtm.lifelog.core.model.Photo
 import com.rmtm.lifelog.util.toLocalDateTimeString
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * [상세 보기 화면]
@@ -47,12 +57,14 @@ import kotlinx.coroutines.launch
 fun DetailScreen(
     state: StateFlow<DetailState>,
     onBack: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: (Long) -> Unit
 ) {
     val uiState = state.collectAsStateWithLifecycle()
     val ui = uiState.value
 
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) } // Add state for edit dialog
     var selectedPhotoIndex by remember { mutableStateOf<Int?>(null) }
 
     if (selectedPhotoIndex != null && ui.entry != null) {
@@ -73,8 +85,13 @@ fun DetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete")
+                    ui.entry?.let { entry -> // Only show edit/delete if entry exists
+                        IconButton(onClick = { showEditDialog = true }) {
+                            Icon(Icons.Default.Edit, contentDescription = "수정")
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "삭제")
+                        }
                     }
                 }
             )
@@ -152,6 +169,30 @@ fun DetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
+    // New Edit Dialog
+    if (showEditDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditDialog = false },
+            title = { Text("기록 수정") },
+            text = { Text("기록을 수정하시겠습니까?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showEditDialog = false
+                    ui.entry?.let { entry ->
+                        onEdit(entry.id)
+                    }
+                }) {
+                    Text("확인")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDialog = false }) {
                     Text("취소")
                 }
             }
@@ -242,26 +283,38 @@ private fun ZoomableImage(
     onZoomChanged: (Boolean) -> Unit
 ) {
     var scale by remember(uri) { mutableStateOf(1f) }
-    var offsetX by remember(uri) { mutableStateOf(0f) }
-    var offsetY by remember(uri) { mutableStateOf(0f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
 
-    // Notify the parent about the zoom state change
     LaunchedEffect(scale) {
         onZoomChanged(scale > 1f)
+        if (scale == 1f) {
+            offset = Offset.Zero
+        }
     }
 
     Box(
-        modifier = modifier.pointerInput(uri) {
-            detectTransformGestures { _, pan, zoom, _ ->
-                scale = (scale * zoom).coerceIn(1f, 5f)
-                val newOffsetX = offsetX + pan.x
-                val newOffsetY = offsetY + pan.y
-                val maxX = (size.width * (scale - 1)) / 2
-                val maxY = (size.height * (scale - 1)) / 2
-                offsetX = newOffsetX.coerceIn(-maxX, maxX)
-                offsetY = newOffsetY.coerceIn(-maxY, maxY)
+        modifier = modifier
+            .pointerInput(uri) {
+                detectTransformGestures { _, pan, zoom, _ ->
+                    if (scale == 1f && zoom == 1f) return@detectTransformGestures
+
+                    scale = (scale * zoom).coerceIn(1f, 5f)
+
+                    if (scale > 1f) {
+                        val imageWidth = size.width
+                        val imageHeight = size.height
+                        val newOffsetX = offset.x + pan.x
+                        val newOffsetY = offset.y + pan.y
+                        val maxX = (imageWidth * (scale - 1f) / 2f)
+                        val maxY = (imageHeight * (scale - 1f) / 2f)
+
+                        offset = Offset(
+                            x = newOffsetX.coerceIn(-maxX, maxX),
+                            y = newOffsetY.coerceIn(-maxY, maxY)
+                        )
+                    }
+                }
             }
-        }
     ) {
         AsyncImage(
             model = uri,
@@ -271,8 +324,8 @@ private fun ZoomableImage(
                 .graphicsLayer(
                     scaleX = scale,
                     scaleY = scale,
-                    translationX = offsetX,
-                    translationY = offsetY
+                    translationX = offset.x,
+                    translationY = offset.y
                 ),
             contentScale = ContentScale.Fit
         )

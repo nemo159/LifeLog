@@ -47,11 +47,34 @@ class DefaultEntryRepository @Inject constructor(
         val newId = entryDao.upsert(entry.toEntity())
         val targetId = if (entry.id == 0L) newId else entry.id
 
-        photoDao.deleteByEntry(targetId)
-        if (photos.isNotEmpty()) {
-            photoDao.upsertAll(photos.map { it.copy(entryId = targetId).toEntity() })
+        // Get current photos associated with this entry from DB
+        val existingPhotoEntities = photoDao.getByEntry(targetId)
+        val existingPhotoUrisInDb = existingPhotoEntities.map { it.uri }.toSet()
+
+        // URIs of photos that should be in the DB after this upsert
+        val incomingPhotoUris = photos.map { it.uri }.toSet()
+
+        // 1. Delete photos that are in DB but not in incoming photos (removed by user)
+        val photosToDelete = existingPhotoEntities.filter { it.uri !in incomingPhotoUris }
+        photosToDelete.forEach {
+            imageStorageManager.deleteImage(it.uri) // Delete actual file
+            photoDao.delete(it) // Delete from DB
+        }
+
+        // 2. Add/update photos that are in incoming photos but not in DB (newly added/modified)
+        val photosToUpsert = photos.filter { it.uri !in existingPhotoUrisInDb }
+        if (photosToUpsert.isNotEmpty()) {
+            photoDao.upsertAll(photosToUpsert.map { it.copy(entryId = targetId).toEntity() })
         }
         return targetId
+    }
+
+    override suspend fun getEntryById(id: Long): Entry? {
+        val entryEntity = entryDao.getById(id)
+        return entryEntity?.toDomain()?.let { domainEntry ->
+            val photoEntities = photoDao.getByEntry(id)
+            domainEntry.copy(photos = photoEntities.map { it.toDomain() })
+        }
     }
 
     override suspend fun delete(entry: Entry) {

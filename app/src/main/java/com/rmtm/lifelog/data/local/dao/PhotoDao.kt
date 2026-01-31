@@ -1,6 +1,7 @@
 package com.rmtm.lifelog.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -25,4 +26,8 @@ interface PhotoDao {
     /** Entry에 속한 사진 전체 삭제 (Entry 삭제 전/후 정합성 유지 목적) */
     @Query("DELETE FROM photos WHERE entryId = :entryId")
     suspend fun deleteByEntry(entryId: Long)
+
+    /** 단일 사진 삭제 */
+    @Delete
+    suspend fun delete(entity: PhotoEntity)
 }

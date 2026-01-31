@@ -49,7 +49,7 @@ fun EditorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("기록 작성") }
+                title = { Text("") }
             )
         }
     ) { padding ->

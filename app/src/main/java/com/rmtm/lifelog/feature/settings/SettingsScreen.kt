@@ -344,7 +344,7 @@ private fun RestoreSuccessDialog(onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = { /* 사용자가 외부를 클릭해도 닫히지 않음 */ },
         title = { Text("복원 완료") },
-        text = { Text("복원이 완료되었습니다. 확인 버튼을 누른 후 앱을 다시 시작해주세요.") },
+        text = { Text("복원이 완료되었습니다.\n확인 버튼을 누른 후 앱을 다시 시작해주세요.") },
         confirmButton = {
             TextButton(onClick = { System.exit(0) }) {
                 Text("확인")

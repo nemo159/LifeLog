@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
@@ -98,7 +99,31 @@ fun LifeLogNavHost() {
             DetailScreen(
                 state = vm.state,
                 onBack = { navController.popBackStack() },
-                onDelete = { vm.delete { navController.popBackStack() } }
+                onDelete = { vm.delete { navController.popBackStack() } },
+                onEdit = { entryId ->
+                    navController.navigate(Routes.editEntry(entryId))
+                }
+            )
+        }
+
+        composable(
+            route = Routes.EDIT_ENTRY,
+            arguments = listOf(navArgument("entryId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val vm: EditorViewModel = hiltViewModel()
+            val entryId = backStackEntry.arguments?.getLong("entryId") ?: 0L
+            LaunchedEffect(entryId) {
+                if (entryId != 0L) {
+                    vm.loadEntryForEdit(entryId)
+                }
+            }
+            EditorScreen(
+                state = vm.state,
+                onMoodChanged = vm::onMoodChanged,
+                onNoteChanged = vm::onNoteChanged,
+                onPhotosSelected = vm::onPhotosSelected,
+                onSave = { vm.save { navController.popBackStack() } },
+                onCancel = { navController.popBackStack() }
             )
         }
     }

@@ -8,12 +8,14 @@ import com.rmtm.lifelog.core.model.Photo
 import com.rmtm.lifelog.data.repository.EntryRepository
 import com.rmtm.lifelog.util.ImageStorageManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
+import android.content.Context
 
 import com.rmtm.lifelog.core.model.Mood
 
@@ -37,9 +39,11 @@ data class EditorState(
 @HiltViewModel
 class EditorViewModel @Inject constructor(
     private val repo: EntryRepository,
-    private val imageStorageManager: ImageStorageManager
+    private val imageStorageManager: ImageStorageManager,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
+    private val _currentEntryId = MutableStateFlow<Long?>(null)
     private val _state = MutableStateFlow(EditorState())
     val state: StateFlow<EditorState> = _state.asStateFlow()
 
@@ -55,6 +59,21 @@ class EditorViewModel @Inject constructor(
         _state.value = _state.value.copy(selectedUris = uris)
     }
 
+    fun loadEntryForEdit(entryId: Long) {
+        viewModelScope.launch {
+            val entry = repo.getEntryById(entryId)
+            entry?.let {
+                _currentEntryId.value = it.id
+                _state.value = _state.value.copy(
+                    date = LocalDate.ofEpochDay(it.dateEpochDay),
+                    mood = Mood.fromValue(it.mood),
+                    note = it.note,
+                    selectedUris = it.photos.map { photo -> Uri.parse(photo.uri) }
+                )
+            }
+        }
+    }
+
     /**
      * 저장 처리
      * - 선택된 사진들을 내부 저장소로 복사한 후 DB에 저장합니다.
@@ -64,25 +83,44 @@ class EditorViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = currentState.copy(saving = true)
 
-            // 1. 사진들을 내부 저장소로 복사
-            val photos = currentState.selectedUris.mapNotNull { uri ->
-                val localPath = imageStorageManager.saveImageToInternalStorage(uri)
-                if (localPath != null) {
-                    Photo(entryId = 0L, uri = localPath)
-                } else null
+            // Get original entry if exists for createdAt
+            val originalEntry = _currentEntryId.value?.let { repo.getEntryById(it) }
+
+            // 1. 사진들을 처리 (새로운 사진은 내부 저장소로 복사, 기존 사진은 경로 재사용)
+            val processedPhotos = mutableListOf<Photo>()
+            for (uri in currentState.selectedUris) {
+                // Check if the URI is already an internal file URI.
+                val isInternalFileUri = uri.scheme == "file" &&
+                                        uri.path?.startsWith(context.filesDir.absolutePath) == true
+
+                if (isInternalFileUri) {
+                    // It's an existing internal photo, just add it to the list
+                    processedPhotos.add(Photo(entryId = _currentEntryId.value ?: 0L, uri = uri.path!!))
+                } else {
+                    // It's a new external URI (e.g., from Photo Picker), save it to internal storage
+                    val localPath = imageStorageManager.saveImageToInternalStorage(uri)
+                    if (localPath != null) {
+                        processedPhotos.add(Photo(entryId = _currentEntryId.value ?: 0L, uri = localPath))
+                    } else {
+                        // Handle error, maybe log or notify user
+                        // For now, simply skip if saving fails
+                    }
+                }
             }
 
             // 2. Entry 및 Photo 정보 저장
             val now = System.currentTimeMillis()
             val entry = Entry(
+                id = _currentEntryId.value ?: 0L, // Use existing ID if available
                 dateEpochDay = currentState.date.toEpochDay(),
                 mood = currentState.mood.value,
                 note = currentState.note,
-                createdAt = now,
+                createdAt = originalEntry?.createdAt ?: now, // Retain original createdAt or set new
                 updatedAt = now
             )
 
-            repo.upsert(entry, photos)
+            repo.upsert(entry, processedPhotos) // Changed photos to processedPhotos
+            _state.value = currentState.copy(saving = false) // Reset saving state
             onDone()
         }
     }
