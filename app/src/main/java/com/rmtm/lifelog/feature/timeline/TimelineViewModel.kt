@@ -30,7 +30,8 @@ data class TimelineState(
     val availableYears: List<Int> = emptyList(),
     val availableMonths: List<Int> = emptyList(),
     val selectedYear: Int? = null,
-    val selectedMonth: Int? = null
+    val selectedMonth: Int? = null,
+    val expansionState: Map<String, Boolean> = emptyMap()
 )
 
 /**
@@ -71,6 +72,14 @@ class TimelineViewModel @Inject constructor(
         _selectedYear.value = year
         _selectedMonth.value = month
         updateState()
+    }
+
+    fun toggleHeaderExpansion(header: String) {
+        val currentExpansionState = _state.value.expansionState
+        val isExpanded = currentExpansionState.getOrDefault(header, true)
+        _state.value = _state.value.copy(
+            expansionState = currentExpansionState + (header to !isExpanded)
+        )
     }
 
     private fun updateState() {
@@ -115,6 +124,11 @@ class TimelineViewModel @Inject constructor(
             LocalDate.ofEpochDay(entry.dateEpochDay).format(formatter)
         }
 
+        // 새 그룹이 생겼을 때 기본적으로 확장된 상태로 추가
+        val newExpansionState = grouped.keys.associateWith { header ->
+            _state.value.expansionState.getOrDefault(header, true)
+        }
+
         _state.value = _state.value.copy(
             loading = false,
             entries = sortedList,
@@ -123,7 +137,8 @@ class TimelineViewModel @Inject constructor(
             availableYears = years,
             availableMonths = months,
             selectedYear = year,
-            selectedMonth = month
+            selectedMonth = month,
+            expansionState = newExpansionState
         )
     }
 }

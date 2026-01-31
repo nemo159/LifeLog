@@ -67,7 +67,8 @@ fun LifeLogNavHost() {
                 },
                 onSortChange = vm::onSortOrderChanged,
                 onDateSelect = vm::selectDate,
-                onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+                onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+                onToggleHeaderExpansion = vm::toggleHeaderExpansion
             )
         }
 

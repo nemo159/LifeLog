@@ -1,22 +1,34 @@
 package com.rmtm.lifelog.feature.detail
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.rmtm.lifelog.core.model.Mood
+import com.rmtm.lifelog.core.model.Photo
 import com.rmtm.lifelog.util.toLocalDateTimeString
 import kotlinx.coroutines.flow.StateFlow
 
@@ -37,6 +49,15 @@ fun DetailScreen(
     val ui = uiState.value
 
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var selectedPhotoIndex by remember { mutableStateOf<Int?>(null) }
+
+    if (selectedPhotoIndex != null && ui.entry != null) {
+        PhotoViewerDialog(
+            photos = ui.entry.photos,
+            initialIndex = selectedPhotoIndex!!,
+            onDismiss = { selectedPhotoIndex = null }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -56,11 +77,11 @@ fun DetailScreen(
         }
     ) { padding ->
         if (ui.loading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = androidx.compose.ui.Alignment.Center) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else if (ui.entry == null) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = androidx.compose.ui.Alignment.Center) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text("기록을 찾을 수 없습니다.")
             }
         } else {
@@ -94,17 +115,15 @@ fun DetailScreen(
                 )
 
                 if (entry.photos.isNotEmpty()) {
-                    Spacer(Modifier.height(24.dp))
-                    Text("사진", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(16.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(entry.photos) { photo ->
-                            Card {
+                        itemsIndexed(entry.photos) { index, photo ->
+                            Card(modifier = Modifier.clickable { selectedPhotoIndex = index }) {
                                 AsyncImage(
                                     model = photo.uri,
                                     contentDescription = null,
-                                    modifier = Modifier.size(250.dp),
-                                    contentScale = ContentScale.Fit
+                                    modifier = Modifier.size(120.dp),
+                                    contentScale = ContentScale.Crop
                                 )
                             }
                         }
@@ -132,6 +151,97 @@ fun DetailScreen(
                     Text("취소")
                 }
             }
+        )
+    }
+}
+
+@Composable
+private fun PhotoViewerDialog(
+    photos: List<Photo>,
+    initialIndex: Int,
+    onDismiss: () -> Unit
+) {
+    var currentIndex by remember { mutableStateOf(initialIndex) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.8f))
+        ) {
+            // Zoomable Image
+            ZoomableImage(
+                uri = photos[currentIndex].uri,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Close Button
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "닫기", tint = Color.White)
+            }
+
+            // Previous Button
+            if (currentIndex > 0) {
+                IconButton(
+                    onClick = { currentIndex-- },
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
+                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "이전 사진", tint = Color.White, modifier = Modifier.size(48.dp))
+                }
+            }
+
+            // Next Button
+            if (currentIndex < photos.size - 1) {
+                IconButton(
+                    onClick = { currentIndex++ },
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                ) {
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "다음 사진", tint = Color.White, modifier = Modifier.size(48.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ZoomableImage(uri: String, modifier: Modifier = Modifier) {
+    var scale by remember(uri) { mutableStateOf(1f) }
+    var offsetX by remember(uri) { mutableStateOf(0f) }
+    var offsetY by remember(uri) { mutableStateOf(0f) }
+
+    Box(
+        modifier = modifier.pointerInput(uri) {
+            detectTransformGestures { _, pan, zoom, _ ->
+                scale = (scale * zoom).coerceIn(1f, 5f)
+                val newOffsetX = offsetX + pan.x
+                val newOffsetY = offsetY + pan.y
+                val maxX = (size.width * (scale - 1)) / 2
+                val maxY = (size.height * (scale - 1)) / 2
+                offsetX = newOffsetX.coerceIn(-maxX, maxX)
+                offsetY = newOffsetY.coerceIn(-maxY, maxY)
+            }
+        }
+    ) {
+        AsyncImage(
+            model = uri,
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                    translationX = offsetX,
+                    translationY = offsetY
+                ),
+            contentScale = ContentScale.Fit
         )
     }
 }

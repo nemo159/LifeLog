@@ -1,5 +1,7 @@
 package com.rmtm.lifelog.feature.timeline
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,12 +17,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rmtm.lifelog.core.model.Entry
 import com.rmtm.lifelog.core.model.Mood
-import com.rmtm.lifelog.util.toLocalDateString
+import com.rmtm.lifelog.util.toLocalDateTimeString
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -37,7 +40,8 @@ fun TimelineScreen(
     onEntryClick: (Entry) -> Unit,
     onSortChange: (SortOrder) -> Unit,
     onDateSelect: (Int?, Int?) -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onToggleHeaderExpansion: (String) -> Unit
 ) {
     val uiState = state.collectAsStateWithLifecycle()
     val ui = uiState.value
@@ -187,27 +191,41 @@ fun TimelineScreen(
                         .padding(padding)
                 ) {
                     ui.groupedEntries.forEach { (header, entries) ->
+                        val isExpanded = ui.expansionState.getOrDefault(header, true)
                         stickyHeader {
                             Surface(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onToggleHeaderExpansion(header) }
+                                    .animateContentSize(),
                                 color = MaterialTheme.colorScheme.surfaceVariant
                             ) {
-                                Text(
-                                    text = header,
-                                    modifier = Modifier.padding(
-                                        horizontal = 16.dp,
-                                        vertical = 8.dp
-                                    ),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = header,
+                                        modifier = Modifier.weight(1f),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    val rotation by animateFloatAsState(if (isExpanded) 180f else 0f, label = "rotation")
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = if (isExpanded) "접기" else "펼치기",
+                                        modifier = Modifier.rotate(rotation)
+                                    )
+                                }
                             }
                         }
-                        items(
-                            items = entries,
-                            key = { entry -> entry.id }
-                        ) { entry ->
-                            EntryCard(entry, onClick = { onEntryClick(entry) })
+                        if (isExpanded) {
+                            items(
+                                items = entries,
+                                key = { entry -> entry.id }
+                            ) { entry ->
+                                EntryCard(entry, onClick = { onEntryClick(entry) })
+                            }
                         }
                     }
                 }
@@ -231,8 +249,8 @@ private fun EntryCard(entry: Entry, onClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    entry.dateEpochDay.toLocalDateString(),
-                    style = MaterialTheme.typography.titleMedium
+                    entry.createdAt.toLocalDateTimeString(),
+                    style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
                     text = Mood.fromValue(entry.mood).emoji,
