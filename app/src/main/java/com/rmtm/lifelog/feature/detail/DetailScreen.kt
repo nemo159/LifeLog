@@ -1,11 +1,14 @@
 package com.rmtm.lifelog.feature.detail
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -31,6 +34,7 @@ import com.rmtm.lifelog.core.model.Mood
 import com.rmtm.lifelog.core.model.Photo
 import com.rmtm.lifelog.util.toLocalDateTimeString
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 /**
  * [상세 보기 화면]
@@ -38,7 +42,7 @@ import kotlinx.coroutines.flow.StateFlow
  * - 일기의 모든 내용(날짜, 기분, 글, 사진)을 크게 보여줍니다.
  * - 삭제 버튼을 통해 기록을 지울 수 있습니다.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DetailScreen(
     state: StateFlow<DetailState>,
@@ -155,13 +159,19 @@ fun DetailScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PhotoViewerDialog(
     photos: List<Photo>,
     initialIndex: Int,
     onDismiss: () -> Unit
 ) {
-    var currentIndex by remember { mutableStateOf(initialIndex) }
+    val pagerState = rememberPagerState(
+        initialPage = initialIndex,
+        pageCount = { photos.size }
+    )
+    val scope = rememberCoroutineScope()
+    var isZoomed by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -172,11 +182,17 @@ private fun PhotoViewerDialog(
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.8f))
         ) {
-            // Zoomable Image
-            ZoomableImage(
-                uri = photos[currentIndex].uri,
-                modifier = Modifier.fillMaxSize()
-            )
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                userScrollEnabled = !isZoomed
+            ) { page ->
+                ZoomableImage(
+                    uri = photos[page].uri,
+                    modifier = Modifier.fillMaxSize(),
+                    onZoomChanged = { isZoomed = it }
+                )
+            }
 
             // Close Button
             IconButton(
@@ -189,9 +205,13 @@ private fun PhotoViewerDialog(
             }
 
             // Previous Button
-            if (currentIndex > 0) {
+            if (pagerState.currentPage > 0) {
                 IconButton(
-                    onClick = { currentIndex-- },
+                    onClick = {
+                        scope.launch {
+                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                        }
+                    },
                     modifier = Modifier.align(Alignment.CenterStart)
                 ) {
                     Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "이전 사진", tint = Color.White, modifier = Modifier.size(48.dp))
@@ -199,9 +219,13 @@ private fun PhotoViewerDialog(
             }
 
             // Next Button
-            if (currentIndex < photos.size - 1) {
+            if (pagerState.currentPage < photos.size - 1) {
                 IconButton(
-                    onClick = { currentIndex++ },
+                    onClick = {
+                        scope.launch {
+                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                        }
+                    },
                     modifier = Modifier.align(Alignment.CenterEnd)
                 ) {
                     Icon(Icons.Default.KeyboardArrowRight, contentDescription = "다음 사진", tint = Color.White, modifier = Modifier.size(48.dp))
@@ -212,10 +236,19 @@ private fun PhotoViewerDialog(
 }
 
 @Composable
-private fun ZoomableImage(uri: String, modifier: Modifier = Modifier) {
+private fun ZoomableImage(
+    uri: String,
+    modifier: Modifier = Modifier,
+    onZoomChanged: (Boolean) -> Unit
+) {
     var scale by remember(uri) { mutableStateOf(1f) }
     var offsetX by remember(uri) { mutableStateOf(0f) }
     var offsetY by remember(uri) { mutableStateOf(0f) }
+
+    // Notify the parent about the zoom state change
+    LaunchedEffect(scale) {
+        onZoomChanged(scale > 1f)
+    }
 
     Box(
         modifier = modifier.pointerInput(uri) {
