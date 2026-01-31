@@ -68,6 +68,7 @@ import com.rmtm.lifelog.ui.theme.ThemeViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.system.exitProcess
 
 /**
  * [설정 화면]
@@ -346,7 +347,7 @@ private fun RestoreSuccessDialog(onConfirm: () -> Unit) {
         title = { Text("복원 완료") },
         text = { Text("복원이 완료되었습니다.\n확인 버튼을 누른 후 앱을 다시 시작해주세요.") },
         confirmButton = {
-            TextButton(onClick = { System.exit(0) }) {
+            TextButton(onClick = { exitProcess(0) }) {
                 Text("확인")
             }
         }

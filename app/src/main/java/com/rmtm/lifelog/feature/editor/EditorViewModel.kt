@@ -55,8 +55,10 @@ class EditorViewModel @Inject constructor(
         _state.value = _state.value.copy(note = note)
     }
 
-    fun onPhotosSelected(uris: List<Uri>) {
-        _state.value = _state.value.copy(selectedUris = uris)
+    fun onPhotosSelected(newUris: List<Uri>) {
+        val currentSelectedUris = _state.value.selectedUris
+        val combinedUris = (currentSelectedUris + newUris).distinct()
+        _state.value = _state.value.copy(selectedUris = combinedUris)
     }
 
     fun loadEntryForEdit(entryId: Long) {
@@ -68,10 +70,16 @@ class EditorViewModel @Inject constructor(
                     date = LocalDate.ofEpochDay(it.dateEpochDay),
                     mood = Mood.fromValue(it.mood),
                     note = it.note,
-                    selectedUris = it.photos.map { photo -> Uri.parse(photo.uri) }
+                    selectedUris = it.photos.map { photo -> Uri.parse("file://" + photo.uri) }
                 )
             }
         }
+    }
+
+    fun onPhotoRemoved(uri: Uri) {
+        _state.value = _state.value.copy(
+            selectedUris = _state.value.selectedUris.filter { it != uri }
+        )
     }
 
     /**
@@ -88,22 +96,24 @@ class EditorViewModel @Inject constructor(
 
             // 1. 사진들을 처리 (새로운 사진은 내부 저장소로 복사, 기존 사진은 경로 재사용)
             val processedPhotos = mutableListOf<Photo>()
-            for (uri in currentState.selectedUris) {
-                // Check if the URI is already an internal file URI.
-                val isInternalFileUri = uri.scheme == "file" &&
-                                        uri.path?.startsWith(context.filesDir.absolutePath) == true
+            val internalFilesDirPath = context.filesDir.absolutePath
 
-                if (isInternalFileUri) {
-                    // It's an existing internal photo, just add it to the list
+            for (uri in currentState.selectedUris) {
+                // An existing internal photo would have scheme "file" and its path starting with internalFilesDirPath
+                val isAlreadyInternalFile = uri.scheme == "file" && uri.path?.startsWith(internalFilesDirPath) == true
+
+                if (isAlreadyInternalFile) {
+                    // If it's an existing internal file, use its path directly
+                    // Note: uri.path for file:// URIs is typically the absolute path without the scheme
                     processedPhotos.add(Photo(entryId = _currentEntryId.value ?: 0L, uri = uri.path!!))
                 } else {
-                    // It's a new external URI (e.g., from Photo Picker), save it to internal storage
+                    // Otherwise, it's a new photo from picker (content://) or a malformed URI
+                    // Save it to internal storage and use the new localPath
                     val localPath = imageStorageManager.saveImageToInternalStorage(uri)
                     if (localPath != null) {
                         processedPhotos.add(Photo(entryId = _currentEntryId.value ?: 0L, uri = localPath))
                     } else {
-                        // Handle error, maybe log or notify user
-                        // For now, simply skip if saving fails
+                        // Handle error, e.g., log, show toast. For now, skip.
                     }
                 }
             }

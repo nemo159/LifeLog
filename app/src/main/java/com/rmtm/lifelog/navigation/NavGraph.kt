@@ -86,6 +86,7 @@ fun LifeLogNavHost() {
                 onMoodChanged = vm::onMoodChanged,
                 onNoteChanged = vm::onNoteChanged,
                 onPhotosSelected = vm::onPhotosSelected,
+                onPhotoRemoved = vm::onPhotoRemoved,
                 onSave = { vm.save { navController.popBackStack() } },
                 onCancel = { navController.popBackStack() }
             )
@@ -122,6 +123,7 @@ fun LifeLogNavHost() {
                 onMoodChanged = vm::onMoodChanged,
                 onNoteChanged = vm::onNoteChanged,
                 onPhotosSelected = vm::onPhotosSelected,
+                onPhotoRemoved = vm::onPhotoRemoved,
                 onSave = { vm.save { navController.popBackStack() } },
                 onCancel = { navController.popBackStack() }
             )

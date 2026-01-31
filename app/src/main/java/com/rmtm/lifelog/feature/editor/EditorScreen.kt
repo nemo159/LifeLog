@@ -8,8 +8,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -31,6 +33,7 @@ fun EditorScreen(
     onMoodChanged: (Mood) -> Unit,
     onNoteChanged: (String) -> Unit,
     onPhotosSelected: (List<android.net.Uri>) -> Unit,
+    onPhotoRemoved: (android.net.Uri) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -118,12 +121,27 @@ fun EditorScreen(
                 ) {
                     items(ui.selectedUris) { uri ->
                         Card {
-                            AsyncImage(
-                                model = uri,
-                                contentDescription = null,
-                                modifier = Modifier.size(100.dp),
-                                contentScale = ContentScale.Crop
-                            )
+                            Box(modifier = Modifier.size(100.dp)) {
+                                AsyncImage(
+                                    model = uri,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(), // Fill the Box size
+                                    contentScale = ContentScale.Crop
+                                )
+                                IconButton(
+                                    onClick = { onPhotoRemoved(uri) },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(4.dp)
+                                        .size(24.dp) // Smaller size for the close button
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "사진 삭제",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant // Use a color that stands out
+                                    )
+                                }
+                            }
                         }
                     }
                 }
