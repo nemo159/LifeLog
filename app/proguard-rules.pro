@@ -58,47 +58,27 @@
 -dontwarn kotlinx.coroutines.**
 
 #####################################
-## Google Play Services & Auth
+## Google API Client 및 HTTP Transport 보호
 #####################################
-#-keep class com.google.android.gms.auth.api.signin.** { *; }
-#-keep class com.google.android.gms.common.api.** { *; }
-#
-#####################################
-## Google Drive API Specific
-#####################################
-## 드라이브 API의 모델 클래스들이 난독화되면 JSON 파싱 시 'Key'를 찾지 못합니다.
-#-keep class com.google.api.services.drive.model.** { *; }
-#-keep class com.google.api.services.drive.** { *; }
-#
-## Google API Client Library 내부의 자원 보호
-#-keep class com.google.api.client.json.** { *; }
-#-keep class com.google.api.client.extensions.android.** { *; }
-#
-#####################################
-## Jackson / Gson (드라이브 API가 사용하는 파서)
-#####################################
-## 만약 Jackson을 사용한다면
-#-keep class com.fasterxml.jackson.** { *; }
-#-dontwarn com.fasterxml.jackson.**
-#
-## 만약 Gson을 사용한다면
-#-keep class com.google.gson.** { *; }
-#-keep class com.google.api.client.json.gson.** { *; }
-
-# 1. Google API Client 및 HTTP Transport 보호
 -keep class com.google.api.client.** { *; }
 -keep interface com.google.api.client.** { *; }
 
-# 2. Google Drive 서비스 모델 클래스 (데이터 매핑용)
+#####################################
+## Google Drive 서비스 모델 클래스 (데이터 매핑용)
+#####################################
 # 이 부분이 난독화되면 API 응답 값을 클래스 필드에 담지 못합니다.
 -keep class com.google.api.services.drive.** { *; }
 -keep interface com.google.api.services.drive.** { *; }
 
-# 3. 데이터 처리를 위한 내부 라이브러리 (Guava 등)
+#####################################
+## 데이터 처리를 위한 내부 라이브러리 (Guava 등)
+#####################################
 -keep class com.google.common.base.** { *; }
 -keep class com.google.common.collect.** { *; }
 
-# 4. JSON 파싱 관련 (Jackson/Gson)
+#####################################
+## JSON 파싱 관련 (Jackson/Gson)
+#####################################
 # 드라이브 API 응답의 JSON 키 값을 유지하기 위해 필수입니다.
 -keepattributes Signature,RuntimeVisibleAnnotations,AnnotationDefault
 -keepclassmembers class * {
@@ -106,7 +86,9 @@
     @com.google.api.client.util.Value <fields>;
 }
 
-# 5. 기타 구글 인증 관련
+#####################################
+## 기타 구글 인증 관련
+#####################################
 -keep class com.google.android.gms.auth.** { *; }
 -keep class com.google.android.gms.common.** { *; }
 -dontwarn com.google.api.client.**
