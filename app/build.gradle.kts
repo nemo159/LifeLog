@@ -114,6 +114,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6") // Flow를 Compose에서 Lifecycle 안전하게 수집
+    implementation("androidx.core:core-splashscreen:1.0.1")
 
     // 이미지 로딩(URI 기반 사진 미리보기용) - Photo Picker 붙일 때 바로 사용
     implementation("io.coil-kt:coil-compose:2.7.0")
