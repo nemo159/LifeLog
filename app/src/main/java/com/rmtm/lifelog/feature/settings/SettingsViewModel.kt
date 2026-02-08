@@ -183,6 +183,13 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * 권한 요청이 필요한 액션을 설정합니다.
+     */
+    fun setPendingAction(action: PendingAction?) {
+        _uiState.update { it.copy(showPermissionAlertFor = action) }
+    }
+
+    /**
      * 선택된 파일을 복원합니다.
      */
     fun restore(fileId: String, backupFileName: String) {
@@ -280,8 +287,13 @@ data class SettingsUiState(
     val isLoading: Boolean = false,
     val backupEvent: BackupEvent? = null,
     val restoreEvent: RestoreEvent? = null,
-    val backupFiles: List<File>? = null
+    val backupFiles: List<File>? = null,
+    val showPermissionAlertFor: PendingAction? = null
 )
+
+enum class PendingAction {
+    BACKUP, RESTORE
+}
 
 /**
  * 백업 작업의 결과를 나타내는 sealed class

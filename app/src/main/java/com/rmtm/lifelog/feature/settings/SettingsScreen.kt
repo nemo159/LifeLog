@@ -92,6 +92,8 @@ fun SettingsScreen(
     var showRestoreSuccessDialog by remember { mutableStateOf(false) }
     var showRestoreConfirmationDialog by remember { mutableStateOf(false) }
     var showBackupConfirmationDialog by remember { mutableStateOf(false) }
+    var showRevokeConfirmationDialog by remember { mutableStateOf(false) }
+    var showSignOutConfirmationDialog by remember { mutableStateOf(false) }
 
 
     // Google 로그인 Intent를 위한 ActivityResultLauncher
@@ -173,18 +175,7 @@ fun SettingsScreen(
         RestoreConfirmationDialog(
             onConfirm = {
                 showRestoreConfirmationDialog = false
-                val account = GoogleSignIn.getLastSignedInAccount(context)
-                if (account != null) {
-                    val driveScope =
-                        Scope("https://www.googleapis.com/auth/drive.file")
-                    val hasPermission =
-                        GoogleSignIn.hasPermissions(account, driveScope)
-                    if (hasPermission) {
-                        viewModel.listBackupFiles()
-                    } else {
-                        signInLauncher.launch(googleSignInClient.signInIntent)
-                    }
-                }
+                viewModel.listBackupFiles()
             },
             onDismiss = { showRestoreConfirmationDialog = false }
         )
@@ -194,20 +185,39 @@ fun SettingsScreen(
         BackupConfirmationDialog(
             onConfirm = {
                 showBackupConfirmationDialog = false
-                val account = GoogleSignIn.getLastSignedInAccount(context)
-                if (account != null) {
-                    val driveScope =
-                        Scope("https://www.googleapis.com/auth/drive.file")
-                    val hasPermission =
-                        GoogleSignIn.hasPermissions(account, driveScope)
-                    if (hasPermission) {
-                        viewModel.backup()
+                viewModel.backup()
+            },
+            onDismiss = { showBackupConfirmationDialog = false }
+        )
+    }
+
+    if (showRevokeConfirmationDialog) {
+        RevokeConfirmationDialog(
+            onConfirm = {
+                showRevokeConfirmationDialog = false
+                googleSignInClient.revokeAccess().addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        viewModel.signOut()
+                        Toast.makeText(context, "연동이 해제되었습니다.", Toast.LENGTH_SHORT).show()
                     } else {
-                        signInLauncher.launch(googleSignInClient.signInIntent)
+                        Toast.makeText(context, "연동 해제에 실패했습니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
                     }
                 }
             },
-            onDismiss = { showBackupConfirmationDialog = false }
+            onDismiss = { showRevokeConfirmationDialog = false }
+        )
+    }
+
+    if (showSignOutConfirmationDialog) {
+        SignOutConfirmationDialog(
+            onConfirm = {
+                showSignOutConfirmationDialog = false
+                googleSignInClient.signOut().addOnCompleteListener {
+                    viewModel.signOut()
+                    Toast.makeText(context, "로그아웃되었습니다.", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onDismiss = { showSignOutConfirmationDialog = false }
         )
     }
 
@@ -217,6 +227,16 @@ fun SettingsScreen(
             onDismiss = { viewModel.clearBackupFiles() },
             onFileSelected = { fileId, fileName ->
                 viewModel.restore(fileId, fileName)
+            }
+        )
+    }
+
+    if (uiState.showPermissionAlertFor != null) {
+        PermissionNeededDialog(
+            onDismiss = { viewModel.setPendingAction(null) },
+            onConfirm = {
+                viewModel.setPendingAction(null)
+                signInLauncher.launch(googleSignInClient.signInIntent)
             }
         )
     }
@@ -265,11 +285,8 @@ fun SettingsScreen(
                     } else {
                         UserInfoCard(
                             user = uiState.signedInUser!!,
-                            onSignOut = {
-                                googleSignInClient.signOut().addOnCompleteListener {
-                                    viewModel.signOut()
-                                }
-                            }
+                            onSignOut = { showSignOutConfirmationDialog = true },
+                            onRevoke = { showRevokeConfirmationDialog = true }
                         )
                     }
                 }
@@ -281,7 +298,15 @@ fun SettingsScreen(
                     SettingsSection(title = "데이터") {
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Button(
-                                onClick = { showBackupConfirmationDialog = true },
+                                onClick = {
+                                    val account = GoogleSignIn.getLastSignedInAccount(context)
+                                    val hasPermission = account != null && GoogleSignIn.hasPermissions(account, Scope("https://www.googleapis.com/auth/drive.file"))
+                                    if (hasPermission) {
+                                        showBackupConfirmationDialog = true
+                                    } else {
+                                        viewModel.setPendingAction(PendingAction.BACKUP)
+                                    }
+                                },
                                 enabled = !uiState.isLoading,
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -289,7 +314,15 @@ fun SettingsScreen(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
-                                onClick = { showRestoreConfirmationDialog = true },
+                                onClick = {
+                                    val account = GoogleSignIn.getLastSignedInAccount(context)
+                                    val hasPermission = account != null && GoogleSignIn.hasPermissions(account, Scope("https://www.googleapis.com/auth/drive.file"))
+                                    if (hasPermission) {
+                                        showRestoreConfirmationDialog = true
+                                    } else {
+                                        viewModel.setPendingAction(PendingAction.RESTORE)
+                                    }
+                                },
                                 enabled = !uiState.isLoading,
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -341,6 +374,26 @@ fun SettingsScreen(
 }
 
 @Composable
+private fun PermissionNeededDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("권한 필요") },
+        text = { Text("Google 드라이브 접근 권한을 허용해야 이용할 수 있습니다.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("확인")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소")
+            }
+        }
+    )
+}
+
+
+@Composable
 private fun RestoreSuccessDialog(onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = { /* 사용자가 외부를 클릭해도 닫히지 않음 */ },
@@ -385,6 +438,44 @@ private fun RestoreConfirmationDialog(
         onDismissRequest = onDismiss,
         title = { Text("복원 경고") },
         text = { Text("백업하지 않은 데이터는 복원 시 삭제됩니다. 계속하시겠습니까?") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("확인")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소")
+            }
+        }
+    )
+}
+
+@Composable
+private fun RevokeConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("계정 연동 해제") },
+        text = { Text("계정 연동을 해제하시겠습니까? 앱의 구글 드라이브 접근 권한이 삭제됩니다.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("확인")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소")
+            }
+        }
+    )
+}
+
+@Composable
+private fun SignOutConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("로그아웃") },
+        text = { Text("로그아웃하시겠습니까?") },
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text("확인")
@@ -531,7 +622,7 @@ private fun SettingsSection(
  * 로그인된 사용자 정보를 표시하는 카드 Composable
  */
 @Composable
-private fun UserInfoCard(user: SignedInUser, onSignOut: () -> Unit) {
+private fun UserInfoCard(user: SignedInUser, onSignOut: () -> Unit, onRevoke: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -558,8 +649,20 @@ private fun UserInfoCard(user: SignedInUser, onSignOut: () -> Unit) {
                     Text(user.email ?: "이메일 없음", style = MaterialTheme.typography.bodySmall)
                 }
             }
-            Button(onClick = onSignOut) {
-                Text("로그아웃")
+            Column(modifier = Modifier.padding(start = 16.dp)) {
+                Button(
+                    onClick = onSignOut,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("로그아웃")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onRevoke,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("연동해제")
+                }
             }
         }
     }
