@@ -1,15 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
-        <!-- 스플래시 아이콘 설정 -->
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <!-- 스플래시 배경색 설정 -->
-        <item name="windowSplashScreenBackground">@color/white</item>
-        <!-- 스플래시 이후에 적용될 앱의 메인 테마 -->
-        <item name="postSplashScreenTheme">@style/Theme.LifeLog</item>
-    </style>
-
     <!--
       앱 전체 기본 테마
       - Compose(Material3)와 함께 사용해도 문제 없습니다.

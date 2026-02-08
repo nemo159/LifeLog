@@ -11,18 +11,12 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.lifecycleScope
 import com.rmtm.lifelog.navigation.LifeLogNavHost
 import com.rmtm.lifelog.ui.theme.LifeLogTheme
 import com.rmtm.lifelog.ui.theme.ThemeMode
 import com.rmtm.lifelog.ui.theme.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /**
  * [메인 화면: 메인 액티비티]
@@ -34,7 +28,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     private val themeViewModel: ThemeViewModel by viewModels()
-    private var keepSplashOn by mutableStateOf(true)
+
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
@@ -43,17 +37,7 @@ class MainActivity : ComponentActivity() {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 1. installSplashScreen()은 super.onCreate() 전에 호출되어야 합니다.
-        installSplashScreen().setKeepOnScreenCondition { keepSplashOn }
-
         super.onCreate(savedInstanceState)
-
-        // 2. 1.5초 딜레이 후 스플래시를 닫습니다.
-        lifecycleScope.launch {
-            delay(1500)
-            keepSplashOn = false
-        }
-
         // 카메라 권한 요청
         requestPermissionLauncher.launch(Manifest.permission.CAMERA)
 
