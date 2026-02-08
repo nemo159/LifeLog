@@ -82,6 +82,10 @@ class EditorViewModel @Inject constructor(
         )
     }
 
+    fun getTmpFileUri(): Uri {
+        return imageStorageManager.getTmpFileUri()
+    }
+
     /**
      * 저장 처리
      * - 선택된 사진들을 내부 저장소로 복사한 후 DB에 저장합니다.

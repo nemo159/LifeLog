@@ -1,10 +1,12 @@
 package com.rmtm.lifelog
 
+import android.Manifest
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
@@ -27,14 +29,23 @@ class MainActivity : ComponentActivity() {
 
     private val themeViewModel: ThemeViewModel by viewModels()
 
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            // 권한 부여 결과 처리 (선택적)
+            // 예를 들어, 권한이 거부되었을 때 사용자에게 알림을 표시할 수 있습니다.
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 카메라 권한 요청
+        requestPermissionLauncher.launch(Manifest.permission.CAMERA)
 
         // 태블릿이 아닌 경우에만 세로 모드로 고정
         requestedOrientation = if (!resources.getBoolean(R.bool.is_tablet)) {
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }  else {
-            ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
 
         enableEdgeToEdge()

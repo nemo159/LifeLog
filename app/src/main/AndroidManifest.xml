@@ -1,25 +1,26 @@
-<!--
-  AndroidManifest.xml
-  - Hilt Application 클래스 등록
-  - 런처 Activity exported=true (Android 12+ 필수)
--->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
-    <!-- android:dataExtractionRules :: Android 12+ 데이터 추출 규칙 -->
-    <!-- android:fullBackupContent :: Android 11 이하(또는 full backup 경로) 백업 규칙 -->
-    <!-- android:allowBackup :: 필요 시 백업 자체를 끄고 싶다면 true로 두지 말고 명시적으로 false로 -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <!-- android:dataExtractionRules :: Android 12+ 에서 앱 데이터 추출 규칙을 정의합니다. -->
+    <!-- android:fullBackupContent :: Android 11 이하에서 전체 백업 규칙을 정의합니다. -->
+    <!-- android:allowBackup :: 앱의 자동 백업 허용 여부. false로 비활성화합니다. -->
     <application
         android:name=".LifeLogApplication"
-        android:label="@string/app_name"
-        android:theme="@style/Theme.LifeLog"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:dataExtractionRules="@xml/data_extraction_rules">
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:theme="@style/Theme.LifeLog"
+        tools:targetApi="31">
 
 
         <activity
@@ -31,7 +32,17 @@
             </intent-filter>
         </activity>
 
-        <!-- Hilt/WorkManager 사용 시 기본 Initializer 제거 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.rmtm.lifelog.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- Hilt/WorkManager 통합을 위한 Initializer 비활성화 -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

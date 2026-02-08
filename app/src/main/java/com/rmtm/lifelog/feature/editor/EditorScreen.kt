@@ -1,8 +1,14 @@
 package com.rmtm.lifelog.feature.editor
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -14,7 +20,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.rmtm.lifelog.core.model.Mood
@@ -32,13 +40,19 @@ fun EditorScreen(
     state: StateFlow<EditorState>,
     onMoodChanged: (Mood) -> Unit,
     onNoteChanged: (String) -> Unit,
-    onPhotosSelected: (List<android.net.Uri>) -> Unit,
-    onPhotoRemoved: (android.net.Uri) -> Unit,
+    onPhotosSelected: (List<Uri>) -> Unit,
+    onPhotoRemoved: (Uri) -> Unit,
+    getTmpFileUri: () -> Uri,
     onSave: () -> Unit,
     onCancel: () -> Unit
 ) {
     val uiState = state.collectAsStateWithLifecycle()
     val ui = uiState.value
+    val context = LocalContext.current
+    var showPhotoSourceDialog by remember { mutableStateOf(false) }
+    var showCameraPermissionRationaleDialog by remember { mutableStateOf(false) }
+    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
+
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 5),
@@ -48,6 +62,52 @@ fun EditorScreen(
             }
         }
     )
+
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+        onResult = { success ->
+            if (success) {
+                tempImageUri?.let { uri ->
+                    onPhotosSelected(listOf(uri))
+                }
+            }
+        }
+    )
+
+    if (showPhotoSourceDialog) {
+        PhotoSourceDialog(
+            onDismiss = { showPhotoSourceDialog = false },
+            onGalleryClick = {
+                showPhotoSourceDialog = false
+                photoPickerLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            },
+            onCameraClick = {
+                showPhotoSourceDialog = false
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    val uri = getTmpFileUri()
+                    tempImageUri = uri
+                    takePictureLauncher.launch(uri)
+                } else {
+                    showCameraPermissionRationaleDialog = true
+                }
+            }
+        )
+    }
+
+    if (showCameraPermissionRationaleDialog) {
+        CameraPermissionRationaleDialog(
+            onDismiss = { showCameraPermissionRationaleDialog = false },
+            onConfirm = {
+                showCameraPermissionRationaleDialog = false
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", context.packageName, null)
+                }
+                context.startActivity(intent)
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -100,13 +160,11 @@ fun EditorScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "사진 (${ui.selectedUris.size}/5)",
+                    "사진",
                     style = MaterialTheme.typography.titleMedium
                 )
                 TextButton(onClick = {
-                    photoPickerLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
+                    showPhotoSourceDialog = true
                 }) {
                     Text("사진 선택")
                 }
@@ -175,4 +233,58 @@ fun EditorScreen(
             }
         }
     }
+}
+
+@Composable
+private fun CameraPermissionRationaleDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("권한 필요") },
+        text = { Text("카메라 권한을 허용해야 이용할 수 있습니다. 설정으로 이동하시겠습니까?") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("설정으로 이동")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소")
+            }
+        }
+    )
+}
+
+@Composable
+private fun PhotoSourceDialog(
+    onDismiss: () -> Unit,
+    onGalleryClick: () -> Unit,
+    onCameraClick: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("사진 추가") },
+        text = {
+            Column {
+                Text(
+                    text = "사진첩",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onGalleryClick)
+                        .padding(vertical = 12.dp)
+                )
+                Text(
+                    text = "카메라",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onCameraClick)
+                        .padding(vertical = 12.dp)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소")
+            }
+        }
+    )
 }

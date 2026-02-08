@@ -2,6 +2,8 @@ package com.rmtm.lifelog.util
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.content.FileProvider
+import com.rmtm.lifelog.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -57,5 +59,21 @@ class ImageStorageManager @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    /**
+     * 카메라 촬영을 위한 임시 파일 URI를 생성합니다.
+     */
+    fun getTmpFileUri(): Uri {
+        val tmpFile = File.createTempFile("tmp_image_file", ".png", context.cacheDir).apply {
+            createNewFile()
+            deleteOnExit()
+        }
+
+        return FileProvider.getUriForFile(
+            context,
+            "${BuildConfig.APPLICATION_ID}.provider",
+            tmpFile
+        )
     }
 }
