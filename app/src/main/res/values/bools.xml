@@ -1,0 +1,4 @@
+<resources>
+    <!--  휴대폰인 경우  -->
+    <bool name="is_tablet">false</bool>
+</resources>

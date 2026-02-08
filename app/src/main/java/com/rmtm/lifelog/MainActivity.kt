@@ -1,5 +1,6 @@
 package com.rmtm.lifelog
 
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,6 +29,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 태블릿이 아닌 경우에만 세로 모드로 고정
+        requestedOrientation = if (!resources.getBoolean(R.bool.is_tablet)) {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }  else {
+            ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+        }
+
         enableEdgeToEdge()
 
         setContent {

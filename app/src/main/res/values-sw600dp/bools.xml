@@ -1,0 +1,4 @@
+<resources>
+    <!--  태플릿/대형화면 기기인 경우  -->
+    <bool name="is_tablet">true</bool>
+</resources>
