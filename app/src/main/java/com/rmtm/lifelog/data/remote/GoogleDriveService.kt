@@ -1,7 +1,7 @@
 package com.rmtm.lifelog.data.remote
 
 import android.content.Context
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import android.accounts.Account
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.http.FileContent
 import com.google.api.client.http.javanet.NetHttpTransport
@@ -25,9 +25,10 @@ private const val DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"
 class GoogleDriveService @Inject constructor(
     @param:ApplicationContext private val context: Context
 ) {
-    private fun getDriveService(account: GoogleSignInAccount): Drive {
+    private fun getDriveService(email: String): Drive {
+        val account = Account(email, "com.google")
         val credential = GoogleAccountCredential.usingOAuth2(context, setOf(DRIVE_SCOPE))
-            .also { it.selectedAccount = account.account }
+            .also { it.selectedAccount = account }
 
         return Drive.Builder(
             NetHttpTransport(),
@@ -56,9 +57,9 @@ class GoogleDriveService @Inject constructor(
         createdFolder.id
     }
 
-    suspend fun uploadBackup(account: GoogleSignInAccount, backupFile: java.io.File): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun uploadBackup(email: String, backupFile: java.io.File): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val drive = getDriveService(account)
+            val drive = getDriveService(email)
             val appFolderId = getOrCreateAppFolder(drive)
 
             val fileMetadata = File().apply {
@@ -76,9 +77,9 @@ class GoogleDriveService @Inject constructor(
         }
     }
 
-    suspend fun getBackupFiles(account: GoogleSignInAccount): Result<List<File>> = withContext(Dispatchers.IO) {
+    suspend fun getBackupFiles(email: String): Result<List<File>> = withContext(Dispatchers.IO) {
         try {
-            val drive = getDriveService(account)
+            val drive = getDriveService(email)
             val appFolderId = getOrCreateAppFolder(drive)
 
             val response = drive.files().list()
@@ -93,9 +94,9 @@ class GoogleDriveService @Inject constructor(
         }
     }
 
-    suspend fun downloadBackup(account: GoogleSignInAccount, fileId: String, outputFile: java.io.File): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun downloadBackup(email: String, fileId: String, outputFile: java.io.File): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val drive = getDriveService(account)
+            val drive = getDriveService(email)
             drive.files().get(fileId).executeMediaAndDownloadTo(outputFile.outputStream())
             Result.success(Unit)
         } catch (e: Exception) {

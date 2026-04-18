@@ -1,10 +1,15 @@
 package com.rmtm.lifelog.feature.settings
 
 import android.app.Application
+import android.content.Intent
+import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
+import com.google.android.gms.auth.UserRecoverableAuthException
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.api.services.drive.model.File
 import com.rmtm.lifelog.BuildConfig
 import com.rmtm.lifelog.data.local.db.AppDatabase
@@ -14,6 +19,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,7 +34,7 @@ import javax.inject.Inject
 /**
  * [설정 화면 뷰모델]
  * 설정 화면의 상태와 비즈니스 로직을 관리합니다.
- * - 구글 로그인/로그아웃 처리
+ * - 구글 로그인/로그아웃 처리 (Credential Manager)
  * - 테마 변경
  * - 백업/복원 로직 호출
  */
@@ -35,8 +42,16 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val app: Application,
     private val googleDriveService: GoogleDriveService,
-    private val appDatabase: AppDatabase
+    private val appDatabase: AppDatabase,
+    private val dataStore: DataStore<Preferences>
 ) : ViewModel() {
+
+    companion object {
+        private val KEY_USER_NAME = stringPreferencesKey("user_name")
+        private val KEY_USER_EMAIL = stringPreferencesKey("user_email")
+        private val KEY_USER_PHOTO = stringPreferencesKey("user_photo")
+        private val KEY_USER_ID_TOKEN = stringPreferencesKey("user_id_token")
+    }
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState = _uiState.asStateFlow()
@@ -58,35 +73,94 @@ class SettingsViewModel @Inject constructor(
      */
     private fun checkCurrentUser() {
         viewModelScope.launch {
-            val account = GoogleSignIn.getLastSignedInAccount(app)
-            if (account != null) {
+            val prefs = dataStore.data.first()
+            val email = prefs[KEY_USER_EMAIL]
+            if (email != null) {
                 _uiState.update {
-                    it.copy(signedInUser = account.toSignedInUser())
+                    it.copy(
+                        signedInUser = SignedInUser(
+                            displayName = prefs[KEY_USER_NAME],
+                            email = email,
+                            photoUrl = prefs[KEY_USER_PHOTO],
+                            idToken = prefs[KEY_USER_ID_TOKEN]
+                        )
+                    )
                 }
             }
         }
     }
 
     /**
-     * Google 로그인 결과를 처리합니다.
-     * @param account 성공한 경우의 GoogleSignInAccount, 실패 시 null.
+     * 로그인 성공 시 사용자 정보를 저장합니다.
      */
-    fun onSignInResult(account: GoogleSignInAccount?) {
-        if (account == null) {
-            // 로그인 실패/취소 시 특별한 처리는 하지 않음
-            return
-        }
-        _uiState.update {
-            it.copy(signedInUser = account.toSignedInUser())
+    fun onSignInSuccess(user: SignedInUser) {
+        viewModelScope.launch {
+            dataStore.edit { prefs ->
+                prefs[KEY_USER_NAME] = user.displayName ?: ""
+                prefs[KEY_USER_EMAIL] = user.email ?: ""
+                prefs[KEY_USER_PHOTO] = user.photoUrl ?: ""
+                prefs[KEY_USER_ID_TOKEN] = user.idToken ?: ""
+            }
+            _uiState.update { it.copy(signedInUser = user) }
         }
     }
 
     /**
-     * Google 로그아웃을 처리합니다.
+     * 로그아웃을 처리합니다.
      */
     fun signOut() {
-        _uiState.update {
-            it.copy(signedInUser = null)
+        viewModelScope.launch {
+            dataStore.edit { it.clear() }
+            _uiState.update { it.copy(signedInUser = null) }
+        }
+    }
+
+    /**
+     * 구글 계정 연동을 완전히 해제합니다.
+     */
+    fun revokeAccess(onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val email = _uiState.value.signedInUser?.email
+            if (email.isNullOrEmpty()) {
+                signOut()
+                onComplete(true)
+                return@launch
+            }
+
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    // 1. 드라이브 API 등에서 사용하는 실제 서비스 토큰(Access Token) 획득
+                    val credential = com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential.usingOAuth2(
+                        app, listOf("https://www.googleapis.com/auth/drive.file")
+                    ).also { it.selectedAccount = android.accounts.Account(email, "com.google") }
+
+                    val accessToken = credential.token // 이 과정에서 네트워크 통신 발생
+
+                    if (accessToken.isNullOrEmpty()) {
+                        android.util.Log.e("SettingsViewModel", "Failed to get access token for revoke")
+                        return@withContext false
+                    }
+
+                    // 2. 획득한 Access Token으로 구글 서버에 연동 해제 요청
+                    val url = java.net.URL("https://oauth2.googleapis.com/revoke?token=$accessToken")
+                    val connection = url.openConnection() as java.net.HttpURLConnection
+                    connection.requestMethod = "POST"
+                    connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                    
+                    val responseCode = connection.responseCode
+                    android.util.Log.d("SettingsViewModel", "Server revoke response: $responseCode")
+                    
+                    responseCode == 200
+                } catch (e: Exception) {
+                    android.util.Log.e("SettingsViewModel", "Critical revoke error: ${e.message}")
+                    e.printStackTrace()
+                    false
+                }
+            }
+            
+            // 3. 성공 여부와 상관없이 앱 내 세션 삭제 (사용자가 다시 로그인하게 함)
+            signOut()
+            onComplete(result)
         }
     }
 
@@ -95,13 +169,13 @@ class SettingsViewModel @Inject constructor(
      */
     fun backup() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val account = GoogleSignIn.getLastSignedInAccount(app)
-            if (account == null) {
-                _uiState.update { it.copy(isLoading = false, backupEvent = BackupEvent.Failure("로그인 정보가 없습니다.")) }
+            val user = _uiState.value.signedInUser
+            if (user?.email == null) {
+                _uiState.update { it.copy(backupEvent = BackupEvent.Failure("로그인 정보가 없습니다.")) }
                 return@launch
             }
 
+            _uiState.update { it.copy(isLoading = true) }
             try {
                 withContext(Dispatchers.IO) {
                     val dbPath = app.getDatabasePath(AppDatabase.DATABASE_NAME)
@@ -130,7 +204,7 @@ class SettingsViewModel @Inject constructor(
                     ZipManager.zip(sourcesToZip, backupZipFile.absolutePath)
 
                     // 구글 드라이브에 업로드
-                    val result = googleDriveService.uploadBackup(account, backupZipFile)
+                    val result = googleDriveService.uploadBackup(user.email, backupZipFile)
 
                     // 임시 파일 삭제
                     backupZipFile.delete()
@@ -141,9 +215,23 @@ class SettingsViewModel @Inject constructor(
                 }
                 _uiState.update { it.copy(isLoading = false, backupEvent = BackupEvent.Success) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, backupEvent = BackupEvent.Failure(e.message ?: "알 수 없는 오류")) }
+                val cause = e.cause
+                if (e is UserRecoverableAuthIOException) {
+                    _uiState.update { it.copy(isLoading = false, permissionIntent = e.intent) }
+                } else if (cause is UserRecoverableAuthException) {
+                    _uiState.update { it.copy(isLoading = false, permissionIntent = cause.intent) }
+                } else {
+                    _uiState.update { it.copy(isLoading = false, backupEvent = BackupEvent.Failure(e.message ?: "알 수 없는 오류")) }
+                }
             }
         }
+    }
+
+    /**
+     * 권한 요청 이벤트를 소비합니다.
+     */
+    fun consumePermissionRequest() {
+        _uiState.update { it.copy(permissionIntent = null) }
     }
 
 
@@ -159,18 +247,28 @@ class SettingsViewModel @Inject constructor(
      */
     fun listBackupFiles() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val account = GoogleSignIn.getLastSignedInAccount(app)
-            if (account == null) {
-                _uiState.update { it.copy(isLoading = false, restoreEvent = RestoreEvent.Failure("로그인 정보가 없습니다.")) }
+            val user = _uiState.value.signedInUser
+            if (user?.email == null) {
+                _uiState.update { it.copy(restoreEvent = RestoreEvent.Failure("로그인 정보가 없습니다.")) }
                 return@launch
             }
-            val result = googleDriveService.getBackupFiles(account)
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    backupFiles = result.getOrNull()
-                )
+
+            _uiState.update { it.copy(isLoading = true) }
+            val result = googleDriveService.getBackupFiles(user.email)
+            if (result.isSuccess) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        backupFiles = result.getOrNull()
+                    )
+                }
+            } else {
+                val e = result.exceptionOrNull()
+                if (e is UserRecoverableAuthIOException) {
+                    _uiState.update { it.copy(isLoading = false, permissionIntent = e.intent) }
+                } else {
+                    _uiState.update { it.copy(isLoading = false, restoreEvent = RestoreEvent.Failure(e?.message ?: "목록 로드 실패")) }
+                }
             }
         }
     }
@@ -194,20 +292,20 @@ class SettingsViewModel @Inject constructor(
      */
     fun restore(fileId: String, backupFileName: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, backupFiles = null) }
-            val account = GoogleSignIn.getLastSignedInAccount(app)
-            if (account == null) {
-                _uiState.update { it.copy(isLoading = false, restoreEvent = RestoreEvent.Failure("로그인 정보가 없습니다.")) }
+            val user = _uiState.value.signedInUser
+            if (user?.email == null) {
+                _uiState.update { it.copy(restoreEvent = RestoreEvent.Failure("로그인 정보가 없습니다.")) }
                 return@launch
             }
 
+            _uiState.update { it.copy(isLoading = true, backupFiles = null) }
             try {
                 withContext(Dispatchers.IO) {
                     val tempZipFile = JavaFile(app.cacheDir, backupFileName)
                     val tempUnzipDir = JavaFile(app.cacheDir, "restore_temp")
 
                     // 1. 드라이브에서 임시 zip 파일 다운로드
-                    googleDriveService.downloadBackup(account, fileId, tempZipFile).getOrThrow()
+                    googleDriveService.downloadBackup(user.email, fileId, tempZipFile).getOrThrow()
 
                     // 2. 임시 폴더에 압축 해제
                     if (tempUnzipDir.exists()) tempUnzipDir.deleteRecursively()
@@ -217,7 +315,7 @@ class SettingsViewModel @Inject constructor(
                     // 3. DB 닫기 (파일 접근 해제)
                     appDatabase.close()
 
-                    // 4. 기존 데이터 정리 (Safer: DB 파일만 삭제, 폴더는 유지)
+                    // 4. 기존 데이터 정리
                     val dbFile = app.getDatabasePath(AppDatabase.DATABASE_NAME)
                     JavaFile(dbFile.path).delete()
                     JavaFile(dbFile.path + "-wal").delete()
@@ -229,7 +327,7 @@ class SettingsViewModel @Inject constructor(
                     }
                     imagesDir.mkdirs()
 
-                    // 5. 압축 해제된 모든 파일/폴더를 올바른 위치로 복사
+                    // 5. 압축 해제된 모든 파일/폴더를 복사
                     val unzippedContents = tempUnzipDir.listFiles() ?: emptyArray()
                     var dbFileFound = false
                     for (unzippedFile in unzippedContents) {
@@ -245,7 +343,7 @@ class SettingsViewModel @Inject constructor(
                         throw Exception("백업 파일에 데이터베이스 파일이 없습니다.")
                     }
 
-                    // 6. 임시 파일/폴더 삭제
+                    // 6. 임시 파일 삭제
                     tempZipFile.delete()
                     tempUnzipDir.deleteRecursively()
                 }
@@ -263,13 +361,6 @@ class SettingsViewModel @Inject constructor(
     fun consumeRestoreEvent() {
         _uiState.update { it.copy(restoreEvent = null) }
     }
-
-
-    private fun GoogleSignInAccount.toSignedInUser() = SignedInUser(
-        displayName = this.displayName,
-        email = this.email,
-        photoUrl = this.photoUrl?.toString()
-    )
 }
 
 /**
@@ -288,7 +379,8 @@ data class SettingsUiState(
     val backupEvent: BackupEvent? = null,
     val restoreEvent: RestoreEvent? = null,
     val backupFiles: List<File>? = null,
-    val showPermissionAlertFor: PendingAction? = null
+    val showPermissionAlertFor: PendingAction? = null,
+    val permissionIntent: Intent? = null // 추가: 권한 승인을 위한 Intent
 )
 
 enum class PendingAction {
@@ -321,5 +413,6 @@ sealed class RestoreEvent {
 data class SignedInUser(
     val displayName: String?,
     val email: String?,
-    val photoUrl: String?
+    val photoUrl: String?,
+    val idToken: String? = null
 )

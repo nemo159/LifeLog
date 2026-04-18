@@ -29,7 +29,7 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
         minSdk = 26
         targetSdk = 37
 
-        versionCode = 8
+        versionCode = 9
         versionName = "1.0.0"
     }
 
@@ -79,25 +79,41 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
     }
 }
 
+// 모든 의존성에서 Compose 관련 버전을 강제로 통일 (Material3 제외)
+configurations.all {
+    resolutionStrategy.eachDependency {
+        val group = requested.group
+        val name = requested.name
+        if (group.startsWith("androidx.compose") && 
+            !group.contains("material3") && 
+            !name.contains("compose-bom")) {
+            useVersion("1.7.8")
+        }
+    }
+}
+
 dependencies {
     /**
      * Compose BOM
      * - Compose 관련 의존성 버전을 묶어서 관리합니다.
      */
-    implementation(platform("androidx.compose:compose-bom:2024.12.01"))
-    androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    implementation(platform("androidx.compose:compose-bom:2025.02.00"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2025.02.00"))
 
     // Compose / Material
-    implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.material3:material3")
+    // 명시적으로 최신 버전 고정하여 NoSuchMethodError (FlowRow) 해결
+    val compose_version = "1.7.8"
+    implementation("androidx.compose.foundation:foundation:$compose_version")
+    implementation("androidx.compose.foundation:foundation-layout:$compose_version")
+    implementation("androidx.activity:activity-compose:1.10.0")
+    implementation("androidx.compose.ui:ui:$compose_version")
+    implementation("androidx.compose.material3:material3:1.3.1")
     implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("androidx.compose.ui:ui-tooling-preview:$compose_version")
+    debugImplementation("androidx.compose.ui:ui-tooling:$compose_version")
 
     // Navigation(Compose)
-    implementation("androidx.navigation:navigation-compose:2.8.3")
+    implementation("androidx.navigation:navigation-compose:2.8.7")
 
     // ViewModel / Lifecycle
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
@@ -156,8 +172,11 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
     // -----------------------
-    // Google API (Login, Drive)
+    // Google API (Credential Manager & Auth)
     // -----------------------
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation("com.google.android.gms:play-services-auth:21.2.0")
 
     implementation("com.google.api-client:google-api-client-android:2.2.0") {
@@ -175,7 +194,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2025.02.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 }
 

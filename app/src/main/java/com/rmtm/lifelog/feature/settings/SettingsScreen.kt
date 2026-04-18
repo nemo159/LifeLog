@@ -1,6 +1,7 @@
 package com.rmtm.lifelog.feature.settings
 
 import android.app.Activity
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -45,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,16 +57,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.Scope
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.api.services.drive.model.File
+import com.rmtm.lifelog.R
 import com.rmtm.lifelog.ui.theme.ThemeMode
 import com.rmtm.lifelog.ui.theme.ThemeViewModel
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -73,7 +81,7 @@ import kotlin.system.exitProcess
 /**
  * [설정 화면]
  * 앱의 여러 기능들을 설정하는 화면입니다.
- * - 구글 로그인
+ * - 구글 로그인 (Credential Manager)
  * - 백업/복원
  * - 테마 설정
  * - 앱 버전 정보 표시
@@ -86,6 +94,7 @@ fun SettingsScreen(
     themeViewModel: ThemeViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
     var showThemeDialog by remember { mutableStateOf(false) }
@@ -95,28 +104,75 @@ fun SettingsScreen(
     var showRevokeConfirmationDialog by remember { mutableStateOf(false) }
     var showSignOutConfirmationDialog by remember { mutableStateOf(false) }
 
+    val credentialManager = remember { CredentialManager.create(context) }
 
-    // Google 로그인 Intent를 위한 ActivityResultLauncher
-    val signInLauncher = rememberLauncherForActivityResult(
+    // 추가: 구글 드라이브 권한 승인을 위한 Launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-        try {
-            val account = task.getResult(ApiException::class.java)
-            viewModel.onSignInResult(account)
-        } catch (e: ApiException) {
-            viewModel.onSignInResult(null)
+        if (result.resultCode == Activity.RESULT_OK) {
+            // 권한이 승인됨. 사용자가 이전에 하려던 동작(백업/복원)을 다시 유도하기 위해 토스트 알림
+            Toast.makeText(context, "권한이 승인되었습니다. 다시 시도해 주세요.", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "권한 승인이 거부되었습니다.", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Google 로그인 옵션 (ID와 기본 프로필, Drive 접근 권한 요청)
-    val gso = remember {
-        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestEmail()
-            .requestScopes(Scope("https://www.googleapis.com/auth/drive.file"))
+    /**
+     * Credential Manager를 사용하여 Google 로그인을 수행합니다.
+     */
+    fun onGoogleSignIn() {
+        val serverClientId = context.getString(R.string.google_web_client_id)
+        Log.d("SettingsScreen", "Using serverClientId: $serverClientId")
+        
+        val googleIdOption = GetGoogleIdOption.Builder()
+            .setFilterByAuthorizedAccounts(false)
+            .setServerClientId(serverClientId)
+            .setAutoSelectEnabled(false) // 사용자가 계정을 직접 선택하도록 유도
             .build()
+
+        val request = GetCredentialRequest.Builder()
+            .addCredentialOption(googleIdOption)
+            .build()
+
+        coroutineScope.launch {
+            try {
+                val result = credentialManager.getCredential(
+                    request = request,
+                    context = context
+                )
+                val credential = result.credential
+                if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                    val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                    viewModel.onSignInSuccess(
+                        SignedInUser(
+                            displayName = googleIdTokenCredential.displayName,
+                            email = googleIdTokenCredential.id,
+                            photoUrl = googleIdTokenCredential.profilePictureUri?.toString(),
+                            idToken = googleIdTokenCredential.idToken
+                        )
+                    )
+                }
+            } catch (e: GetCredentialException) {
+                Log.e("SettingsScreen", "Credential Manager Error Type: ${e::class.java.simpleName}")
+                Log.e("SettingsScreen", "Error Message: ${e.message}")
+                
+                val errorMessage = when (e) {
+                    is NoCredentialException -> "사용 가능한 계정이 없습니다. 구글 콘솔에서 '웹 클라이언트 ID'를 사용했는지, SHA-1이 등록되었는지 확인하세요."
+                    is GetCredentialCancellationException -> "로그인이 취소되었습니다."
+                    else -> "로그인 실패 (${e::class.java.simpleName}): ${e.message}"
+                }
+                Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+            }
+        }
     }
-    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
+
+    LaunchedEffect(uiState.permissionIntent) {
+        uiState.permissionIntent?.let { intent ->
+            permissionLauncher.launch(intent)
+            viewModel.consumePermissionRequest()
+        }
+    }
 
     LaunchedEffect(uiState.backupEvent) {
         when (val event = uiState.backupEvent) {
@@ -195,13 +251,9 @@ fun SettingsScreen(
         RevokeConfirmationDialog(
             onConfirm = {
                 showRevokeConfirmationDialog = false
-                googleSignInClient.revokeAccess().addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        viewModel.signOut()
-                        Toast.makeText(context, "연동이 해제되었습니다.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "연동 해제에 실패했습니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
-                    }
+                viewModel.revokeAccess { success ->
+                    // 이제 revokeAccess는 항상 true를 반환하지만, 서버측 결과는 로그로만 남김
+                    Toast.makeText(context, "계정 연동이 해제되었습니다.", Toast.LENGTH_SHORT).show()
                 }
             },
             onDismiss = { showRevokeConfirmationDialog = false }
@@ -212,10 +264,8 @@ fun SettingsScreen(
         SignOutConfirmationDialog(
             onConfirm = {
                 showSignOutConfirmationDialog = false
-                googleSignInClient.signOut().addOnCompleteListener {
-                    viewModel.signOut()
-                    Toast.makeText(context, "로그아웃되었습니다.", Toast.LENGTH_SHORT).show()
-                }
+                viewModel.signOut()
+                Toast.makeText(context, "로그아웃되었습니다.", Toast.LENGTH_SHORT).show()
             },
             onDismiss = { showSignOutConfirmationDialog = false }
         )
@@ -227,16 +277,6 @@ fun SettingsScreen(
             onDismiss = { viewModel.clearBackupFiles() },
             onFileSelected = { fileId, fileName ->
                 viewModel.restore(fileId, fileName)
-            }
-        )
-    }
-
-    if (uiState.showPermissionAlertFor != null) {
-        PermissionNeededDialog(
-            onDismiss = { viewModel.setPendingAction(null) },
-            onConfirm = {
-                viewModel.setPendingAction(null)
-                signInLauncher.launch(googleSignInClient.signInIntent)
             }
         )
     }
@@ -271,7 +311,7 @@ fun SettingsScreen(
                 SettingsSection(title = "계정") {
                     if (uiState.signedInUser == null) {
                         Button(
-                            onClick = { signInLauncher.launch(googleSignInClient.signInIntent) },
+                            onClick = { onGoogleSignIn() },
                             contentPadding = ButtonDefaults.ButtonWithIconContentPadding
                         ) {
                             Icon(
@@ -298,15 +338,7 @@ fun SettingsScreen(
                     SettingsSection(title = "데이터") {
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Button(
-                                onClick = {
-                                    val account = GoogleSignIn.getLastSignedInAccount(context)
-                                    val hasPermission = account != null && GoogleSignIn.hasPermissions(account, Scope("https://www.googleapis.com/auth/drive.file"))
-                                    if (hasPermission) {
-                                        showBackupConfirmationDialog = true
-                                    } else {
-                                        viewModel.setPendingAction(PendingAction.BACKUP)
-                                    }
-                                },
+                                onClick = { showBackupConfirmationDialog = true },
                                 enabled = !uiState.isLoading,
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -314,15 +346,7 @@ fun SettingsScreen(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
-                                onClick = {
-                                    val account = GoogleSignIn.getLastSignedInAccount(context)
-                                    val hasPermission = account != null && GoogleSignIn.hasPermissions(account, Scope("https://www.googleapis.com/auth/drive.file"))
-                                    if (hasPermission) {
-                                        showRestoreConfirmationDialog = true
-                                    } else {
-                                        viewModel.setPendingAction(PendingAction.RESTORE)
-                                    }
-                                },
+                                onClick = { showRestoreConfirmationDialog = true },
                                 enabled = !uiState.isLoading,
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -630,38 +654,64 @@ private fun UserInfoCard(user: SignedInUser, onSignOut: () -> Unit, onRevoke: ()
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // 왼쪽: 사용자 정보 영역 (남은 공간 모두 차지)
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 AsyncImage(
                     model = user.photoUrl,
                     contentDescription = "프로필 사진",
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(48.dp)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop,
                     error = rememberVectorPainter(image = Icons.Default.AccountCircle)
                 )
-                Spacer(modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text(user.displayName ?: "이름 없음", fontWeight = FontWeight.Bold)
-                    Text(user.email ?: "이메일 없음", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = user.displayName ?: "이름 없음",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = user.email ?: "이메일 없음",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-            Column(modifier = Modifier.padding(start = 16.dp)) {
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // 오른쪽: 버튼 영역 (세로로 배치)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.width(100.dp) // 버튼 영역 너비 제한
+            ) {
                 Button(
                     onClick = onSignOut,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
+                    shape = MaterialTheme.shapes.small
                 ) {
-                    Text("로그아웃")
+                    Text("로그아웃", style = MaterialTheme.typography.labelMedium)
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Button(
                     onClick = onRevoke,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
+                    shape = MaterialTheme.shapes.small
                 ) {
-                    Text("연동해제")
+                    Text("연동해제", style = MaterialTheme.typography.labelMedium)
                 }
             }
         }

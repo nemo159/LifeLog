@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 구글 클라우드 콘솔의 [웹 클라이언트 ID] (플레이스토어/운영용) -->
+    <string name="google_web_client_id">254447888970-pqvt780r9jefq0q6mqs68kej9j42rbha.apps.googleusercontent.com</string>
+</resources>
