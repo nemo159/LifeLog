@@ -30,11 +30,17 @@
 ####################################
 # Room 관련
 ####################################
-# Entity / DAO / Database는 난독화해도 되지만,
-# 리플렉션/검증에서 문제 생기는 경우를 대비해 keep
+# Room Database 구현체와 그 생성자를 유지 (Reflection 대응)
+-keep class * extends androidx.room.RoomDatabase {
+    <init>(...);
+}
+
+# Room 라이브러리 내부 클래스 유지
 -keep class androidx.room.** { *; }
 
-# 네 앱의 Entity 패키지 (권장)
+# 엔티티 및 DAO 인터페이스 유지
+-keep class com.rmtm.lifelog.data.local.entity.** { *; }
+-keep class com.rmtm.lifelog.data.local.dao.** { *; }
 -keep class com.rmtm.lifelog.core.model.** { *; }
 
 ####################################

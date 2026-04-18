@@ -29,8 +29,8 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
         minSdk = 26
         targetSdk = 37
 
-        versionCode = 9
-        versionName = "1.0.0"
+        versionCode = 11
+        versionName = "1.0.1"
     }
 
     signingConfigs {
@@ -68,6 +68,9 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
     }
 
