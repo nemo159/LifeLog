@@ -8,13 +8,11 @@ import java.util.Properties
  * - 안드로이드 버전(SDK) 정보를 설정합니다.
  */
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("com.google.dagger.hilt.android")
-
-    // ✅ KSP 플러그인 적용
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.kotlin.ksp)
 }
 
 // gradle.properties에서 키스토어 정보 읽기
@@ -22,16 +20,16 @@ val keystorePropertiesFile = rootProject.file("gradle.properties")
 val keystoreProperties = Properties()
 keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 
-android {
+configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "com.rmtm.lifelog"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.rmtm.lifelog"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
 
-        versionCode = 7
+        versionCode = 8
         versionName = "1.0.0"
     }
 
@@ -51,19 +49,10 @@ android {
 
     /**
      * 자바 컴파일 타겟을 17로 통일합니다.
-     * - Android Gradle Plugin 최신 조합에서 JDK 17이 사실상 표준입니다.
      */
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    /**
-     * 코틀린 컴파일 타겟도 17로 통일합니다.
-     * - Java/Kotlin 타겟이 다르면 컴파일 태스크 검증에서 오류가 발생할 수 있습니다.
-     */
-    kotlinOptions {
-        jvmTarget = "17"
     }
 
     buildTypes {
@@ -139,12 +128,12 @@ dependencies {
     // -----------------------
     // Hilt(DI)
     // -----------------------
-    implementation("com.google.dagger:hilt-android:2.51.1")
+    implementation(libs.hilt.android)
 
     // ✅ Hilt Compiler: kapt(...) -> ksp(...)
-    ksp("com.google.dagger:hilt-compiler:2.51.1")
+    ksp(libs.hilt.compiler)
 
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation(libs.hilt.navigation.compose)
 
     // -----------------------
     // WorkManager(백업/정리 배치 작업)
@@ -152,11 +141,11 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     // Hilt + WorkManager 연동(필수)
-    implementation("androidx.hilt:hilt-work:1.2.0")
+    implementation(libs.hilt.work)
 
     // ✅ androidx.hilt compiler도 kapt(...) -> ksp(...)
     // - 여기 의존성이 없으면 @HiltWorker, HiltWorkerFactory 연동에서 빌드/런타임 문제가 납니다.
-    ksp("androidx.hilt:hilt-compiler:1.2.0")
+    ksp(libs.hilt.ext.compiler)
 
     // 코루틴(명시적으로 고정 권장) - 이미 어딘가에서 들어올 수 있지만, 지금은 명시가 안전
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
@@ -214,9 +203,7 @@ ksp {
 }
 
 /**
- * Kotlin JVM Toolchain
- * - Gradle이 사용할 JDK를 17로 강제 고정합니다.
- * - 환경별로 JDK가 섞여 들어오는 문제를 예방합니다.
+ * 코틀린 컴파일 타겟도 17로 통일합니다.
  */
 kotlin {
     jvmToolchain(17)

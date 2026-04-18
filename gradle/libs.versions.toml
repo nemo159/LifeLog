@@ -1,11 +1,16 @@
 [versions]
-agp = "8.5.1"
-kotlin = "2.0.0"
-ksp = "2.0.0-1.0.21"
-hilt = "2.51.1"
+agp = "9.1.1"
+kotlin = "2.1.0"
+ksp = "2.1.0-1.0.29"
+hilt = "2.59.2"
+hilt-ext = "1.3.0"
 
 [libraries]
-# ...
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hilt-ext" }
+hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hilt-ext" }
+hilt-ext-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hilt-ext" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
