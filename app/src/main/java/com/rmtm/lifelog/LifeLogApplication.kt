@@ -3,6 +3,7 @@ package com.rmtm.lifelog
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.google.android.gms.ads.MobileAds
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -14,6 +15,12 @@ import javax.inject.Inject
  */
 @HiltAndroidApp
 class LifeLogApplication : Application(), Configuration.Provider {
+
+    override fun onCreate() {
+        super.onCreate()
+        // Google Mobile Ads SDK 초기화
+        MobileAds.initialize(this) {}
+    }
 
     /**
      * WorkManager가 Worker를 만들 때 사용할 Factory

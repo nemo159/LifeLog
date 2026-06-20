@@ -29,8 +29,8 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
         minSdk = 26
         targetSdk = 37
 
-        versionCode = 11
-        versionName = "1.0.1"
+        versionCode = 12
+        versionName = "1.0.2"
     }
 
     signingConfigs {
@@ -192,6 +192,10 @@ dependencies {
     implementation("com.google.http-client:google-http-client-android:1.45.0")
     implementation("com.google.auth:google-auth-library-oauth2-http:1.19.0")
 
+    // -----------------------
+    // Google Mobile Ads
+    // -----------------------
+    implementation("com.google.android.gms:play-services-ads:25.3.0")
 
     // 테스트 의존성
     testImplementation("junit:junit:4.13.2")

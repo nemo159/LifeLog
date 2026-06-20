@@ -12,11 +12,15 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.android.gms.ads.MobileAds
 import com.rmtm.lifelog.navigation.LifeLogNavHost
 import com.rmtm.lifelog.ui.theme.LifeLogTheme
 import com.rmtm.lifelog.ui.theme.ThemeMode
 import com.rmtm.lifelog.ui.theme.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * [메인 화면: 메인 액티비티]

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rmtm.lifelog.core.model.Entry
 import com.rmtm.lifelog.core.model.Mood
+import com.rmtm.lifelog.ui.AdBanner
 import com.rmtm.lifelog.util.toLocalDateTimeString
 import kotlinx.coroutines.flow.StateFlow
 
@@ -162,6 +163,9 @@ fun TimelineScreen(
                     }
                 }
             }
+        },
+        bottomBar = {
+            AdBanner()
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAdd) { Text("+") }
