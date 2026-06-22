@@ -165,7 +165,7 @@ fun TimelineScreen(
             }
         },
         bottomBar = {
-            AdBanner()
+            AdBanner(modifier = Modifier.navigationBarsPadding())
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAdd) { Text("+") }
